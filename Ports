@@ -1,0 +1,45 @@
+Known default RC2014 I/O port assignments
+
+This omits some oddities like the Digital Input and Output cards that
+partial decode all over the place and clash with everyone.
+
+
+0x00-0x03	RC2014 DigitalI/O
+0x00-0x01	Scott Baker VFD
+0x10-0x17	RC2014 CF Adapter	(ghosts at 0x90)
+
+0x20		Scott Baker Speech Synthesizer
+0x38		RC2014 pageable ROM
+0x38		SC108 banking/paging
+
+0x40-0x43	Marco's Propeller Graphics Card
+0x48-0x58	Scott Baker Floppy Controller
+
+0x68-0x6B	SC103 Z80 PIO
+0x70-0x7F	RC2014 512K ROM/RAM paging registers
+0x80-0xBF	RC2014 ACIA (partial decode)
+0x80-0x83	RC2014 SIO 
+0x80-0x83	SC104 SIO
+0x80-0x83	Scott Baker SIO
+	(Scott Baker one has ports in different order to
+	 RC2014 standard one ?)
+0x84-0x87	SC104 SIO second card
+0x88-0x8B	SC102 CTC first card
+0x8C-0x8F	SC102 CTC second card
+0x90-0x93	Scott Baker CTC
+
+0xA0		Z280RC boot mode switch
+0xA2		Z280RC RTC
+
+0xC0		Scott Baker Real Time Clock
+0xC0		Ancient Computing 16550A
+0xC0		RC2014/Ed Brindley DS1302 RTC
+0xC0-0xCF	Z280RC IDE
+0xD0-0xD3	Ed Brindley YM-AY
+0xE0-0xE7	Scott Baker CF Adapter
+0xE0-0xE7	RC2014/Ed Brindley PPIDE
+
+
+With no assumed default I can find documented
+
+Scott Baker DAC
