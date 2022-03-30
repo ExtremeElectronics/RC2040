@@ -7,3 +7,24 @@ I have ripped out much of EtchedPixels's great work, to which I'm truely sorry, 
 Now looking at documenting it and adding "usefull" stuff to the build
 
 Huge thanks goes to EtchedPixels, Grant Searle , Mitch Lalovic and Spencer Owen(Rc2014) for collating, modifying and allowing us to play with their software. 
+
+
+SD card images (a get you started , is available in the SD Card Contents sub folder) other rom images can be found :- 
+
+
+### ROM images:
+- Z80 Base ROM images - https://github.com/RC2014Z80/RC2014/tree/master/ROMs/Factory
+- Z80/180 Small Computer Monitor - https://smallcomputercentral.wordpress.com/small-computer-monitor/
+- Z80/180 ROMWBW - https://github.com/wwarthen/RomWBW/releases
+- Etched Pixels non Z80/180 cards - https://github.com/EtchedPixels/RC2014-ROM
+
+### CP/M Disk Images (for non ROMWBW systems)
+
+https://github.com/RC2014Z80/RC2014/tree/master/CPM
+
+### Real hardware Boards 
+
+- RC2014 - RFC2795 Ltd: https://z80kits.com
+- Small Computer Central: https://www.tindie.com/stores/tindiescx/
+- Etched Pixels: https://hackaday.io/projects/hacker/425483
+- TMS9918A card: https://www.tindie.com/stores/mfkamprath/
