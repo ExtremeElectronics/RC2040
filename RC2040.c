@@ -90,6 +90,11 @@ int UseUsb=1;
 char usbcharbuf=0;
 int hasusbcharwaiting=0;
 
+
+struct acia *acia;
+static uint8_t acia_narrow;
+
+
 //serial in circular buffer
 #define INBUFFERSIZE 500
 static char charbufferUART[INBUFFERSIZE];
@@ -197,7 +202,7 @@ volatile int emulator_done;
 #define TRACE_PS2	0x200000
 #define TRACE_ACIA	0x400000
 
-static int trace = 0;
+static int trace = 00000;
 
 static void reti_event(void);
 
@@ -406,22 +411,34 @@ char getUARTcharwaiting(void){
 unsigned int check_chario(void)
 {
    unsigned int r = 0;
-   
    if (UseUsb==0){	
 //	Check UART for Char waiting.
 //        if (uart_is_readable(UART_ID )>0)
 //                r |= 1;//receive ready   
 //        intUARTcharwaiting();
 	if(testUARTcharwaiting()){
-            r|=1;//receive ready
+	//bodge.. if currently in interrupt , lie that there is nothng waiting
+	    if(acia_in_interrupt(acia)){
+	      //r|=0;  //DFA
+	    }else{	    
+              r|=1;//receive ready
+            }
+
+//       if(testUARTcharwaiting()){
+//               r|=1;//receive ready
+
         }
         if (uart_is_writable(UART_ID )>0)
 	    r |= 2;//transmit ready
    }else{
-        r |=2; //always ready to tx
         if(testUSBcharwaiting()){
-            r|=1;
-        }
+          if(acia_in_interrupt(acia)){
+              //r|=0;  //DFA
+            }else{
+              r|=1;//receive ready
+            }
+       }
+       r |=2; //always ready to tx
    }
    return r;
 }
@@ -462,9 +479,6 @@ void recalc_interrupts(void)
 {
 	int_recalc = 1;
 }
-
-struct acia *acia;
-static uint8_t acia_narrow;
 
 
 static void acia_check_irq(struct acia *acia)

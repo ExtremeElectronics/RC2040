@@ -47,6 +47,12 @@ static void acia_irq_compute(struct acia *acia)
 	recalc_interrupts();
 }
 
+//DJW ininit test
+uint8_t acia_in_interrupt(struct acia *acia)
+{
+  return acia->inint;
+}
+
 static void acia_receive(struct acia *acia)
 {
 	if (acia->inreset)
@@ -54,6 +60,7 @@ static void acia_receive(struct acia *acia)
 	/* Already a character waiting so set OVRN */
 	if (acia->status & 1)
 		acia->status |= 0x20;
+		
 	acia->rxchar = next_char();
 	if (acia->trace)
 		printf( "ACIA rx.\n");
