@@ -101,6 +101,7 @@ static char charbufferUART[INBUFFERSIZE];
 static int charinUART=0;
 static int charoutUART=0;
 
+//usb serial buffer
 static char charbufferUSB[INBUFFERSIZE];
 static int charinUSB=0;
 static int charoutUSB=0;
@@ -323,21 +324,23 @@ static void z80_trace(unsigned unused)
 }
 
 
-// experimental usb char in circular buffer
 
-int testUSBcharwaiting(){
+// experimental usb char in circular buffer
+int intUSBcharwaiting(){
+// no interrupt or waiting check so use unblocking getchar, adds to buff if available
     char c = getchar_timeout_us(0); 
     if(c!=ENDSTDIN){
-        //printf("%02X ",c);
         charbufferUSB[charinUSB]=c;
         charinUSB++;
         if (charinUSB==INBUFFERSIZE){
             charinUSB=0;
         }
     }
-  
     return charinUSB!=charoutUSB;
+}
 
+int testUSBcharwaiting(){
+   return charinUSB!=charoutUSB;
 }
 
 char getUSBcharwaiting(void){
@@ -348,22 +351,17 @@ char getUSBcharwaiting(void){
         if (charoutUSB==INBUFFERSIZE){
             charoutUSB=0;
         }
-
     }else{
         printf("USB Buffer underrun");
     }
   return c;
-
 }
 
-// experimental UART char in circular buffer
-
+// experimental UART char in circular buffer rx via USB interrupt
 void intUARTcharwaiting(void){
 //   char c = getchar_timeout_us(0); 
     while (uart_is_readable(UART_ID)) {
-      char c =uart_getc(UART_ID);
-        //printf("%02X ",c);
-//        putchar(c);
+        char c =uart_getc(UART_ID);
         charbufferUART[charinUART]=c;
         charinUART++;
         if (charinUART==INBUFFERSIZE){
@@ -372,6 +370,7 @@ void intUARTcharwaiting(void){
     }
 }
 
+//char waiting test is inbuff=outbuffer?
 int testUARTcharwaiting(){
       return charinUART!=charoutUART;
 }
@@ -408,6 +407,7 @@ char getUARTcharwaiting(void){
 
 }
 
+
 unsigned int check_chario(void)
 {
    unsigned int r = 0;
@@ -418,10 +418,8 @@ unsigned int check_chario(void)
 //        intUARTcharwaiting();
 	if(testUARTcharwaiting()){
 	//bodge.. if currently in interrupt , lie that there is nothng waiting
-	    if(acia_in_interrupt(acia)){
-	      //r|=0;  //DFA
-	    }else{	    
-              r|=1;//receive ready
+	    if(!acia_in_interrupt(acia)){
+                r|=1;//receive ready
             }
 
 //       if(testUARTcharwaiting()){
@@ -432,11 +430,10 @@ unsigned int check_chario(void)
 	    r |= 2;//transmit ready
    }else{
         if(testUSBcharwaiting()){
-          if(acia_in_interrupt(acia)){
-              //r|=0;  //DFA
-            }else{
+         //bodge.. if currently in interrupt , lie that there is nothng waiting
+          if(!acia_in_interrupt(acia)){
               r|=1;//receive ready
-            }
+          }
        }
        r |=2; //always ready to tx
    }
@@ -1777,7 +1774,8 @@ int main(int argc, char *argv[])
 			/* We want to run UI events regularly it seems */
 //			ui_event();
 		}
-
+		//fake USB char in interrupts
+		if (UseUsb) intUSBcharwaiting();
 		/* Do 20ms of I/O and delays */
 //		if (!fast) sleep_ms(20);
 
