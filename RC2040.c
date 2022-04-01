@@ -96,7 +96,7 @@ static uint8_t acia_narrow;
 
 
 //serial in circular buffer
-#define INBUFFERSIZE 500
+#define INBUFFERSIZE 10000
 static char charbufferUART[INBUFFERSIZE];
 static int charinUART=0;
 static int charoutUART=0;
@@ -1681,7 +1681,7 @@ int main(int argc, char *argv[])
 		if (ide0) {
 //			int ide_fd = open(idepath, O_RDWR);
 			printf("IDE open %s \n",idepath);
-                        FRESULT ide_fr=f_open(&fil, idepath, FA_READ);
+                        FRESULT ide_fr=f_open(&fil, idepath, FA_READ | FA_WRITE);
                         
                         //USE FRESULT rather than ide_fd
                         if (ide_fr != FR_OK) {
@@ -1758,7 +1758,7 @@ int main(int argc, char *argv[])
                    while(gpio_get(RESETBUT)==0);
                 }
 
-		for (i = 0; i < 50; i++) {  //origional
+		for (i = 0; i < 40; i++) {  //origional
 //              for (i = 0; i < 100; i++) {
 			int j;
 //			for (j = 0; j < 100; j++) {//origional
@@ -1774,8 +1774,10 @@ int main(int argc, char *argv[])
 			/* We want to run UI events regularly it seems */
 //			ui_event();
 		}
+		
 		//fake USB char in interrupts
 		if (UseUsb) intUSBcharwaiting();
+		
 		/* Do 20ms of I/O and delays */
 //		if (!fast) sleep_ms(20);
 

@@ -424,9 +424,9 @@ static void cmd_writesectors_complete(struct ide_taskfile *tf)
   tf->status |= ST_DRQ;
   /* 0 = 256 sectors */
   d->length = tf->count ? tf->count : 256;
-/*  printf( "WRITE %d SECTORS @ %ld\n", d->length, d->offset); */
+//  printf( "WRITE %d SECTORS @ %ld\n", d->length, d->offset); 
 //  if (d->offset == -1 ||  lseek(d->fd, 512 * d->offset, SEEK_SET) == -1) {
-  if (d->offset == -1 ||  f_lseek(&d->fd, 512 * d->offset) == FR_OK) {
+  if (d->offset == -1 ||  f_lseek(&d->fd, 512 * d->offset) != FR_OK) {
     tf->status |= ST_ERR;
     tf->error |= ERR_IDNF;
     tf->status &= ~ST_DSC;
@@ -486,14 +486,16 @@ static int ide_write_sector(struct ide_drive *d)
 
   d->dptr = d->data;
   //if ((len = write(d->fd, d->data, 512)) != 512) {
-  f_write(&d->fd, d->data, 512,&len);
+  f_write(&d->fd, d->data, 512 ,&len);
   if (len != 512) {
+    printf("ide write sector error %i \n",len);
     d->taskfile.status |= ST_ERR;
     d->taskfile.status &= ~ST_DSC;
     ide_xlate_errno(&d->taskfile, len);
     return -1;
   }
-  HEXDUMP_DATA(d->data)
+  
+//  HEXDUMP_DATA(d->data)
   d->offset += 512;
   return 0;
 }
@@ -863,7 +865,7 @@ static void make_serial(uint16_t *p)
   make_ascii(p, buf, 20);
 }
 
-int ide_make_drive(uint8_t type, int fd)
+int ide_make_drive(uint8_t type,  FIL fd)
 {
   uint8_t s, h;
   uint16_t c;
@@ -875,8 +877,14 @@ int ide_make_drive(uint8_t type, int fd)
 
   memset(ident, 0, 512);
   memcpy(ident, ide_magic, 8);
-  if (write(fd, ident, 512) != 512)
+//  if (write(fd, ident, 512) != 512)
+  UINT bw;
+  f_write(&fd, ident, 512, &bw);
+  if (bw != 512){
+     printf("ide make drive error 1\n");
     return -1;
+  }
+
 
   memset(ident, 0, 8);
   ident[0] = le16((1 << 15) | (1 << 6));	/* Non removable */
@@ -949,12 +957,21 @@ int ide_make_drive(uint8_t type, int fd)
   ident[58] = le16(sectors >> 16);
   ident[60] = ident[57];
   ident[61] = ident[58];
-  if (write(fd, ident, 512) != 512)
+//  if (write(fd, ident, 512) != 512)
+  f_write(&fd, ident, 512,&bw);
+  if (bw != 512){
+    printf("ide write sector error 2\n");
     return -1;
+  }  
 
   memset(ident, 0xE5, 512);
   while(sectors--)
-    if (write(fd, ident, 512) != 512)
-      return -1;
+//    if (write(fd, ident, 512) != 512)
+    f_write(&fd, ident, 512,&bw);
+    if (bw != 512){
+        printf("ide write sector error 3\n");
+        return -1;
+    }
   return 0;
 }
+

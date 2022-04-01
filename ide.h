@@ -88,5 +88,5 @@ int ide_attach(struct ide_controller *c, int drive, FIL fd);
 void ide_detach(struct ide_drive *d);
 void ide_free(struct ide_controller *c);
 
-int ide_make_drive(uint8_t type, int fd);
+int ide_make_drive(uint8_t type, FIL fd);
 #endif
