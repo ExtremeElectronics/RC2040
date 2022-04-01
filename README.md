@@ -7,6 +7,7 @@ I have ripped out much of EtchedPixels's great work, to which I'm truely sorry, 
 # Serial connection details 
 
 UART 115200 N81 3ms/char delay - 3ms/line delay 
+
 USB  115200 N81 3ms/char delay - 3ms/line delay 
 
 # Progress
