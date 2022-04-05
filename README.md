@@ -4,6 +4,18 @@ Z80 emulation of RC2014 using the RP2040 processor
 Initial aim was to get the EtchedPixels (https://github.com/EtchedPixels) linux based z80 emulation including an SD Card based IDE running on a Pi Pico as a standalone.
 I have ripped out much of EtchedPixels's great work, to which I'm truely sorry, but I was only interested in the Z80 emulation, and I needed to get it to fit in an RP2040
 
+# Compiling
+I use a RPI so...
+Install Raspberrypi SDK 
+cloned this RC2040 git into a subdirectory under the pico one then,
+
+  cd pico/RC2040
+  cp ../pico-sdk/external/pico_sdk_import.cmake .
+  mkdir build
+  cd build
+  cmake ..
+  make
+
 # Serial connection details 
 
 UART 115200 N81 3ms/char delay - 3ms/line delay 
