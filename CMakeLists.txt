@@ -13,16 +13,18 @@
   add_executable(RC2040
 	RC2040.c ide.c z80dis.c acia.c
         hw_config.c
-	)
+        dictionary.c
+	iniparser.c
+  )
 
   pico_sdk_init()
 
   add_subdirectory(FatFs_SPI build)
 
 
-
   add_subdirectory(libz80)
   link_directories(libz80)
+
 
   # Add the standard library and FatFS/SPI to the build
   target_link_libraries(RC2040 
