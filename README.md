@@ -18,9 +18,9 @@ cloned this RC2040 git into a subdirectory under the pico one then,
 
 # Serial connection details 
 
-UART 115200 N81 3ms/char delay - 3ms/line delay 
+UART 115200 N81 3ms/char delay - 3ms/line delay (1ms /3ms if overclocked at 250000)
 
-USB  115200 N81 3ms/char delay - 3ms/line delay 
+USB  115200 N81 3ms/char delay - 3ms/line delay (1ms /3ms if overclocked at 250000)
 
 # Progress
 
@@ -41,9 +41,14 @@ SD card images (a get you started , is available in the SD Card Contents sub fol
 
 https://github.com/RC2014Z80/RC2014/tree/master/CPM
 
+### CPM manual
+http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
+
 ### Real hardware Boards 
 
 - RC2014 - RFC2795 Ltd: https://z80kits.com
 - Small Computer Central: https://www.tindie.com/stores/tindiescx/
 - Etched Pixels: https://hackaday.io/projects/hacker/425483
 - TMS9918A card: https://www.tindie.com/stores/mfkamprath/
+
+
