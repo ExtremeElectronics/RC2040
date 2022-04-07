@@ -25,6 +25,11 @@
 #include "hardware/uart.h"
 #include "hardware/irq.h"
 
+//iniparcer
+#include "dictionary.h"
+#include "iniparser.h"
+
+
 //sd card reader
 #include "f_util.h"
 #include "ff.h"
@@ -65,14 +70,16 @@ static uint8_t rom[0x10000]; //64k
 //rom setup
 static uint8_t romdisable=0; //1 disables rom, making ram 0-64k
 static uint16_t pagesize=0x8000; //32k rom
+int rombank = 4; //default to CPM on default rom image
 
 //max files for ls on SD card.
 #define MaxBinFiles 100
 char BinFiles[MaxBinFiles];
 
 /* use stdio for errors via usb uart */
-/* use UART or USB for serial comms */
-int UseUsb=1;
+/* use 0=UART or 1=USB for serial comms */
+/* 3=both for init ONLY */
+int UseUsb=3; 
 
 
 /* Real UART setup*/
@@ -116,9 +123,12 @@ const uint LEDPIN = PICO_DEFAULT_LED_PIN;
 const uint ROMA13 = 18;
 const uint ROMA14 = 19;
 const uint ROMA15 = 20;
-const uint HASSwitches =22;
+const uint HASSwitchesIO =22;
+//
+int HasSwitches=0;
 //
 const uint SELSEL = 21;
+
 
 //buttons
 const uint DUMPBUT =9;
@@ -1060,7 +1070,7 @@ static void sio2_write(uint16_t addr, uint8_t val)
 
 static int ide = 0;
 struct ide_controller *ide0;
-char *idepath =""; //CPMIncTransient.cf";
+//const char * idepath ="CPMIncTransient.cf";
 
 
 static uint8_t my_ide_read(uint16_t addr)
@@ -1272,8 +1282,20 @@ void flash_led(int t){
 }
 
 
+void PrintToSelected(char * string, int all){
+    int uu=UseUsb;
+    if (all) uu=3;
+    if(uu==0 || uu==3){
+         uart_puts(UART_ID, string);
+    }     
+    if(uu==1 || uu==3){
+         printf("%s",string);
+    }
+}
+
+
+
 void WriteRamromToSd(FRESULT fr,char * filename,int writesize,int readfromram){
-//    const char* const filename = "test.BIN";
     if (readfromram){
       printf("\n##### Writing %s to SD from RAM for %04x bytes #####\n\r",filename,writesize);
     }else{
@@ -1300,11 +1322,11 @@ void WriteRamromToSd(FRESULT fr,char * filename,int writesize,int readfromram){
     fr = f_close(&fil);
 }
 
-void ReadSdToRamrom(FRESULT fr,char * filename,int readsize,int SDoffset,int writetoram ){
+void ReadSdToRamrom(FRESULT fr,const char * filename,int readsize,int SDoffset,int writetoram ){
     if(writetoram){
       printf("\n###### Reading %s from SD %04x to RAM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
     }else{
-      printf("\n###### Reading %s from SD %04x to ROM  for %04x bytes#####\n\r",filename,SDoffset,readsize);
+      printf("\n###### Reading %s from SD %04x to ROM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
     }
     FIL fil;
     fr = f_open(&fil, filename, FA_READ); //FA_WRITE
@@ -1318,7 +1340,7 @@ void ReadSdToRamrom(FRESULT fr,char * filename,int readsize,int SDoffset,int wri
       UINT br;
       for(a=0;a<readsize;a++){
         fr = f_read(&fil, &c, sizeof c, &br);
-        if (br==0){printf("Short Rom");}
+        if (br==0){printf("Read Fail");}
         if(writetoram){
           ram[a]=c;
         }else{
@@ -1332,8 +1354,10 @@ void ReadSdToRamrom(FRESULT fr,char * filename,int readsize,int SDoffset,int wri
 }
 
 
-void WriteRamToSD(FRESULT fr,char * filename,int readsize ){
-      printf("\n###### Writing %s to SD from RAM  for %04x bytes#####\n\r",filename,readsize);
+void WriteRamToSD(FRESULT fr,const char * filename,int readsize ){
+    char temp[128];
+    sprintf(temp,"\n###### Writing %s to SD from RAM  for %04x bytes#####\n\r",filename,readsize);
+    PrintToSelected(temp,1);
     FIL fil;
     fr = f_open(&fil, filename, FA_WRITE | FA_CREATE_ALWAYS); //FA_WRITE
     if (FR_OK != fr && FR_EXIST != fr){
@@ -1346,6 +1370,7 @@ void WriteRamToSD(FRESULT fr,char * filename,int readsize ){
       for(a=0;a<readsize;a++){
         c=ram[a];
         fr = f_write(&fil, &c, sizeof c, &bw);
+        if (bw==0){printf("Write Fail");}
       }
 
     }
@@ -1401,25 +1426,33 @@ void DumpRamRom(int FromAddr, int dumpsize,int dram){
 }
 
 
+
 void DumpMemory(int FromAddr, int dumpsize,FRESULT fr){
   int rc=0;
   int a;
+  char temp[128];
   if(romdisable){
-        printf("ROM Disabled\n");
+        sprintf(temp,"\n\rROM Disabled\n\r");
+        PrintToSelected(temp,0);
   }else{
-        printf("ROM Enabled\n");
+        sprintf(temp,"\n\rROM Enabled\n\r");
+        PrintToSelected(temp,0);
   }
-  printf("MEM %04X ",FromAddr);
-  WriteRamToSD(fr,"dump.bin",0x10000 );
+  sprintf(temp,"MEM %04X ",FromAddr);
+  PrintToSelected(temp,0);
+  WriteRamToSD(fr,"DUMP.BIN",0x10000 );
   for(a=0;a<dumpsize;a++){
-      printf("%02x ",mem_read0(a+FromAddr));
+      sprintf(temp,"%02x ",mem_read0(a+FromAddr));
+      PrintToSelected(temp,0);
       rc++;
 
       if(rc % 32==0){
-        printf("\nMEM %04x ",rc+FromAddr);
+        sprintf(temp,"\r\nMEM %04x ",rc+FromAddr);
+        PrintToSelected(temp,0);
       }else{
         if (rc % 8==0){
-          printf(" ");
+          sprintf(temp," ");
+          PrintToSelected(temp,0);
         }
       }
   }
@@ -1480,11 +1513,10 @@ int ls(const char *dir,const char * search) {
 }
 
 
-
 int GetRomSwitches(){
-  gpio_init(HASSwitches); 
-  gpio_set_dir(HASSwitches,GPIO_IN);
-  gpio_pull_up(HASSwitches);
+  gpio_init(HASSwitchesIO); 
+  gpio_set_dir(HASSwitchesIO,GPIO_IN);
+  gpio_pull_up(HASSwitchesIO);
 
   gpio_init(ROMA13);
   gpio_set_dir(ROMA13,GPIO_IN);
@@ -1506,36 +1538,53 @@ int GetRomSwitches(){
   sleep_ms(1); //wait for io to settle.
 
   int v=0;
-  if (gpio_get(HASSwitches)==1){
-    v=4; //default to load CPM
-    UseUsb=1; //default to usb serial
-    printf("\nNo Switches, loading defaults \n\r");
-
+  if (gpio_get(HASSwitchesIO)==1){
+    PrintToSelected("\r\nNo Switches, no settings changed \n\r",1);
+    HasSwitches=0;
   }else{
-    //switches present use values
-    if (gpio_get(ROMA13))v+=1;
-    if (gpio_get(ROMA14))v+=2;
-    if (gpio_get(ROMA15))v+=4;
+    //switches present, use values
+    PrintToSelected("\r\nOverriding ini from address/port Switches  \n\r",1);
+    HasSwitches=1;
+    rombank=0;
+    if (gpio_get(ROMA13))rombank+=1;
+    if (gpio_get(ROMA14))rombank+=2;
+    if (gpio_get(ROMA15))rombank+=4;
 
     if (gpio_get(SELSEL)==1){
         UseUsb=1;
     }else{
         UseUsb=0;
     }
+
+//if has switches, then has buttons too.
+
+//setup DUMPSTOP gpio
+    gpio_init(DUMPBUT);
+    gpio_set_dir(DUMPBUT,GPIO_IN);
+    gpio_pull_up(DUMPBUT);
+
+//setup RESETBUT gpio
+    gpio_init(RESETBUT);
+    gpio_set_dir(RESETBUT,GPIO_IN);
+    gpio_pull_up(RESETBUT);
+
+
+
   }
-  printf("Rom select %02x\n",v);
-  return v;
-
+  return rombank;
 
 }
 
-void PrintToSelected(char * string){
-    if(UseUsb==0){
-         uart_puts(UART_ID, string);
-    }else{
-         printf("%s",string);
-    }
+
+int SDFileExists(char * filename){
+    FRESULT fr;
+    FILINFO fno;
+
+    fr = f_stat(filename, &fno);
+    return fr==FR_OK;
 }
+
+
 
 
 
@@ -1561,65 +1610,141 @@ int main(int argc, char *argv[])
 	int opt;
 	int fd;
 	int romen = 1;
-	int rombank = 0;
-	char *rompath = "rc2014.rom";
-	char *idepath = NULL;
+	int ramonly=0; //disble rom copy 64K romfile directly to ram
+	//char *idepath = NULL; 
+	const char * idepath ="CPMIncTransient.cf";
+	
 	int have_acia = 0;
 	int indev;
 	char *patha = NULL, *pathb = NULL;
+	const char * romfile ="R0001009.BIN"; //default ROM image
 
+        char temp[250];
+	
+	int SerialType =0; //ACIA=0 SIO=1
+
+        char RomTitle[200];
+//over clock
+        set_sys_clock_khz(250000, true);
+
+
+	
 #define INDEV_ACIA	1
 #define INDEV_SIO	2
 #define INDEV_CPLD	3
 #define INDEV_16C550A	4
 #define INDEV_KIO	5
 
+
+
+
 //	uint8_t *p = ramrom;
 //	while (p < ramrom + sizeof(ramrom))
 //		*p++= rand();
-        char RomTitle[100];
-
+//        UseUsb=3; // init to both
 
 // led gpio
         setup_led();
         flash_led(250);
         stdio_usb_init();
         flash_led(250);
-        printf("\nUSB INIT OK \n\r");
+        printf("\rUSB INIT OK \n\r");
                 
-        //init uart
+//init uart
         init_pico_uart();
+        uart_puts(UART_ID,"\rUSB INIT OK \n\r");
 
-        uart_puts(UART_ID,"\nUSB INIT OK \n\r");
-        //get switches and select rom bank
-        rombank=GetRomSwitches();
-        
+
+// mount SD Card
+        sd_card_t *pSD = sd_get_by_num(0);
+        FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+        if (FR_OK != fr){
+        // panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
+          PrintToSelected("SD INIT FAIL  \n\r",1);
+          while(1); //halt
+        }
+
+        PrintToSelected("SD INIT OK \n\r",1);
+
+//banner
         sprintf(RomTitle, "\n\n\n\r####################################");
-        PrintToSelected(RomTitle);
+        PrintToSelected(RomTitle,1);
         sprintf(RomTitle, "\r\n# PICO RC2040 Derek Woodroffe 2022 #");
-        PrintToSelected(RomTitle);
+        PrintToSelected(RomTitle,1);
         sprintf(RomTitle, "\r\n####################################\n\n\n\r");
-        PrintToSelected(RomTitle);
+        PrintToSelected(RomTitle,1);
+
+
+// inifile parse
+	dictionary * ini ;
+	char       * ini_name ;
+        const char  *   s ;
+        
+        int overclock;
+
+       	ini_name = "rc2040.ini";
+
+	
+	if (SDFileExists(ini_name)){
+	  sprintf(temp,"Ini file %s Exists Loading ... \n\r",ini_name);
+	  PrintToSelected(temp,1);
+		
+	  ini = iniparser_load(fr, ini_name);
+	  iniparser_dump(ini, stdout);
+
+//	  ROM select from ini
+	  rombank=0;
+	  if (iniparser_getint(ini, "ROM:a13", 0)) rombank+=1;
+	  if (iniparser_getint(ini, "ROM:a14", 0)) rombank+=2;
+	  if (iniparser_getint(ini, "ROM:a15", 0)) rombank+=4;
+
+	  // ROMfile from ini
+	  romfile = iniparser_getstring(ini, "ROM:romfile", romfile);
+
+	  // RAMonly load
+	  ramonly =iniparser_getint(ini, "ROM:ramonly", 0);
+
+	  // IDE cf file
+	  idepath =iniparser_getstring(ini, "IDE:idefile", idepath);
+	  
+	  // USB or UART
+	  UseUsb=iniparser_getint(ini, "SERIAL:port", 1);
+
+	  // ACIA /SERIAL
+          SerialType=iniparser_getint(ini, "EMULATION:serialtype",0 );
+
+          // Trace enable from inifile
+	  trace=iniparser_getint(ini, "DEBUG:trace",0 );
+
+          // Overclock
+	  overclock=iniparser_getint(ini, "SPEED:overclock",0 );
+	  if (overclock>0){
+
+	        sprintf(temp,"Overclock to %i000\n\r",overclock,1);
+	        PrintToSelected(temp,1);
+	  	set_sys_clock_khz(overclock*1000, true);
+          }
+
+	  //iniparser_freedict(ini); // cant free, settings are pointed to dictionary.
+
+	  PrintToSelected("Loaded INI\n\r",1);	
+
+
+//IF switches link present, get switches and select rom bank and UART from switches
+          rombank=GetRomSwitches();
+          
+          
+        
+        }else{
+          uart_puts(UART_ID,"No  \n\r");
+          printf("SD INIT OK \n\r",1);
+        }
 
 //        uart_puts(UART_ID, "\r\n\nPICO RC2040 Derek Woodroffe 2022\n\n\r");
         flash_led(200);
 
 //        printf("\n'command line' setup \n");
-
-//setup DUMPSTOP gpio
-        gpio_init(DUMPBUT);
-        gpio_set_dir(DUMPBUT,GPIO_IN);
-        gpio_pull_up(DUMPBUT);
-
-//setup RESETBUT gpio
-        gpio_init(RESETBUT);
-        gpio_set_dir(RESETBUT,GPIO_IN);
-        gpio_pull_up(RESETBUT);
         
-// mount SD Card
-        sd_card_t *pSD = sd_get_by_num(0);
-        FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
-        if (FR_OK != fr) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
 
 // "command line" settings"
 
@@ -1639,7 +1764,6 @@ int main(int argc, char *argv[])
 	*/
 	    
 	//rom -r 
-	char * romfile="R0001009.BIN";
 	  
 	//Fast -f // probably doesnt mean anything anymore no nano delay.
 	fast = 1;
@@ -1648,28 +1772,44 @@ int main(int argc, char *argv[])
 //	rombank=GetRomSwitches();
 
 	//ide cf path -i
-	idepath ="CPMIncTransient.cf";
+//	idepath ="CPMIncTransient.cf";
+	if (SerialType==0){
+  	  //ACIA enable 
+  	  
+  	  //SIO
+	  sio2 = 0;
+	  sio2_input = 0;
+	  //ACIA
+	  have_acia = 1;
+	  indev = INDEV_ACIA;
+          acia_narrow = 0;
+        }else{
+          //SIO enable 
+          
+          //SIO
+          sio2 = 1;
+          sio2_input = 1;
+          //ACIA
+          have_acia = 0;
+          indev = INDEV_ACIA;
+          acia_narrow = 0;
+        }
+        
+        //ram only system, hey we are emulating this, we can do ANYTHING!! 
+        if (ramonly){
+          // Read RAM from SD
+          ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
+          romdisable =1; //disable romswitching
+          sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s' \n\r",romfile,idepath);
+        }else{
+          // Read Rom from SD
+          ReadSdToRamrom(fr,romfile,0x2000,0x2000*rombank,USEROM);   //load directly to rom
+          sprintf(RomTitle,"Loading: '%s'[rombank:%i] CPM CF File:'%s' \n\r",romfile,rombank,idepath);
+        }
 
-	//SIO enable -s
-	sio2 = 0;
-	sio2_input = 0;
-	//ACIA
-	have_acia = 1;
-	indev = INDEV_ACIA;
-        acia_narrow = 0;
 
-        // Read Rom from SD
-        ReadSdToRamrom(fr,romfile,0x2000,0x2000*rombank,USEROM);   //load directly to ram
-
-        sprintf(RomTitle,"IDE - '%s'[rombank:%i] CPM CF File:'%s' \n\r",romfile,rombank,idepath);
-        PrintToSelected(RomTitle);
-
-/*
-        uart_puts(UART_ID, "Dump\n");
-        DumpRamRom(0,1024);
-        CopyRam2Ram(0,0x4000,0x4000);
-*/
-
+        sprintf(RomTitle,"Loading: '%s'[rombank:%i] - CPM CF File:'%s' \n\r",romfile,rombank,idepath);
+        PrintToSelected(RomTitle,1);
 
         have_ctc = 0;
         have_16x50 = 0;
@@ -1679,11 +1819,9 @@ int main(int argc, char *argv[])
 		FIL fil;
 		ide0 = ide_allocate("cf");
 		if (ide0) {
-//			int ide_fd = open(idepath, O_RDWR);
 			printf("IDE open %s \n",idepath);
                         FRESULT ide_fr=f_open(&fil, idepath, FA_READ | FA_WRITE);
                         
-                        //USE FRESULT rather than ide_fd
                         if (ide_fr != FR_OK) {
 				//perror(idepath);
 				printf("Error IDE Open Fail %s",idepath);
@@ -1733,7 +1871,7 @@ int main(int argc, char *argv[])
 	cpu_z80.memWrite = mem_write;
 	cpu_z80.trace = z80_trace;
 
-	PrintToSelected("\nRC2040 STARTING\n\n\r");
+	PrintToSelected("\r\n######## RC2040 STARTING #########\n\n\r",0);
 
 	/* This is the wrong way to do it but it's easier for the moment. We
 	   should track how much real time has occurred and try to keep cycle
@@ -1746,16 +1884,17 @@ int main(int argc, char *argv[])
 	while (!emulator_done) {
 		int i;
 		/* 36400 T states for base RC2014 - varies for others */
+                if(HasSwitches){       
+	          if(gpio_get(DUMPBUT)==0){
+                     DumpMemory(0,0x10000,fr);
+                     while(gpio_get(DUMPBUT)==0);
+                  }
 
-	        if(gpio_get(DUMPBUT)==0){
-                    DumpMemory(0,0x10000,fr);
-                    while(gpio_get(DUMPBUT)==0);
-                }
-
-                if(gpio_get(RESETBUT)==0) {
-                   printf("\nZ80 RESET\n");
-                   Z80RESET(&cpu_z80);
-                   while(gpio_get(RESETBUT)==0);
+                  if(gpio_get(RESETBUT)==0) {
+                    PrintToSelected("\r\n####### Z80 RESET ######### \n\n\r",0);
+                    Z80RESET(&cpu_z80);
+                    while(gpio_get(RESETBUT)==0);
+                  }
                 }
 
 		for (i = 0; i < 40; i++) {  //origional
@@ -1776,7 +1915,7 @@ int main(int argc, char *argv[])
 		}
 		
 		//fake USB char in interrupts
-		if (UseUsb) intUSBcharwaiting();
+		if (UseUsb==1) intUSBcharwaiting();
 		
 		/* Do 20ms of I/O and delays */
 //		if (!fast) sleep_ms(20);
@@ -1795,4 +1934,5 @@ int main(int argc, char *argv[])
 		}
 	}
 }
+
 
