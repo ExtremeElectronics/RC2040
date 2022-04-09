@@ -50,7 +50,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <tusb.h>
 #include "system.h"
 #include "libz80/z80.h"
 
@@ -81,6 +81,9 @@ char BinFiles[MaxBinFiles];
 /* 3=both for init ONLY */
 int UseUsb=3; 
 
+//IDE
+static int ide =1; //set to 1 to init IDE
+struct ide_controller *ide0;
 
 /* Real UART setup*/
 #define UART_ID uart0
@@ -173,8 +176,6 @@ static uint8_t have_ctc;
 static uint8_t have_16x50;
 static uint8_t fast = 0;
 static uint8_t int_recalc = 0;
-
-//static struct ppide *ppide;
 
 static uint16_t tstate_steps = 365;	/* RC2014 speed */
 
@@ -1068,10 +1069,6 @@ static void sio2_write(uint16_t addr, uint8_t val)
 	}
 }
 
-static int ide = 0;
-struct ide_controller *ide0;
-//const char * idepath ="CPMIncTransient.cf";
-
 
 static uint8_t my_ide_read(uint16_t addr)
 {
@@ -1324,9 +1321,9 @@ void WriteRamromToSd(FRESULT fr,char * filename,int writesize,int readfromram){
 
 void ReadSdToRamrom(FRESULT fr,const char * filename,int readsize,int SDoffset,int writetoram ){
     if(writetoram){
-      printf("\n###### Reading %s from SD %04x to RAM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
+      printf("\n##### Reading %s from SD %04x to RAM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
     }else{
-      printf("\n###### Reading %s from SD %04x to ROM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
+      printf("\n##### Reading %s from SD %04x to ROM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
     }
     FIL fil;
     fr = f_open(&fil, filename, FA_READ); //FA_WRITE
@@ -1543,7 +1540,7 @@ int GetRomSwitches(){
     HasSwitches=0;
   }else{
     //switches present, use values
-    PrintToSelected("\r\nOverriding ini from address/port Switches  \n\r",1);
+    PrintToSelected("\r\nOverriding INI from address/port Switches  \n\r",1);
     HasSwitches=1;
     rombank=0;
     if (gpio_get(ROMA13))rombank+=1;
@@ -1635,14 +1632,6 @@ int main(int argc, char *argv[])
 #define INDEV_16C550A	4
 #define INDEV_KIO	5
 
-
-
-
-//	uint8_t *p = ramrom;
-//	while (p < ramrom + sizeof(ramrom))
-//		*p++= rand();
-//        UseUsb=3; // init to both
-
 // led gpio
         setup_led();
         flash_led(250);
@@ -1690,7 +1679,7 @@ int main(int argc, char *argv[])
 	  PrintToSelected(temp,1);
 		
 	  ini = iniparser_load(fr, ini_name);
-	  iniparser_dump(ini, stdout);
+//	  iniparser_dump(ini, stdout);
 
 //	  ROM select from ini
 	  rombank=0;
@@ -1704,6 +1693,9 @@ int main(int argc, char *argv[])
 	  // RAMonly load
 	  ramonly =iniparser_getint(ini, "ROM:ramonly", 0);
 
+          // Use Ide
+	  ide=iniparser_getint(ini, "IDE:ide",1);
+	  
 	  // IDE cf file
 	  idepath =iniparser_getstring(ini, "IDE:idefile", idepath);
 	  
@@ -1732,23 +1724,21 @@ int main(int argc, char *argv[])
 
 //IF switches link present, get switches and select rom bank and UART from switches
           rombank=GetRomSwitches();
-          
-          
-        
+                  
         }else{
           uart_puts(UART_ID,"No  \n\r");
           printf("SD INIT OK \n\r",1);
         }
 
-//        uart_puts(UART_ID, "\r\n\nPICO RC2040 Derek Woodroffe 2022\n\n\r");
         flash_led(200);
-
-//        printf("\n'command line' setup \n");
-        
+        if (UseUsb){
+        PrintToSelected("\rWaiting for USB to connect\n\r",1);
+          //if usb wait for usb to connect.
+          while (!tud_cdc_connected()) { sleep_ms(100);  }
+        }
 
 // "command line" settings"
 
-        ide = 1;
         cpuboard=0;
 
 	// IDE ACIA
@@ -1768,11 +1758,6 @@ int main(int argc, char *argv[])
 	//Fast -f // probably doesnt mean anything anymore no nano delay.
 	fast = 1;
 
-	//RomBank -e 
-//	rombank=GetRomSwitches();
-
-	//ide cf path -i
-//	idepath ="CPMIncTransient.cf";
 	if (SerialType==0){
   	  //ACIA enable 
   	  
@@ -1800,11 +1785,11 @@ int main(int argc, char *argv[])
           // Read RAM from SD
           ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
           romdisable =1; //disable romswitching
-          sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s' \n\r",romfile,idepath);
+          sprintf(RomTitle,"##### Loading: '%s' 64K RAM only image - CPM CF File:'%s' #####\n\r",romfile,idepath);
         }else{
           // Read Rom from SD
           ReadSdToRamrom(fr,romfile,0x2000,0x2000*rombank,USEROM);   //load directly to rom
-          sprintf(RomTitle,"Loading: '%s'[rombank:%i] CPM CF File:'%s' \n\r",romfile,rombank,idepath);
+          sprintf(RomTitle,"##### Loading: '%s'[rombank:%i] CPM CF File:'%s' #####\n\r",romfile,rombank,idepath);
         }
 
 
@@ -1819,7 +1804,7 @@ int main(int argc, char *argv[])
 		FIL fil;
 		ide0 = ide_allocate("cf");
 		if (ide0) {
-			printf("IDE open %s \n",idepath);
+			//printf("IDE open %s \n",idepath);
                         FRESULT ide_fr=f_open(&fil, idepath, FA_READ | FA_WRITE);
                         
                         if (ide_fr != FR_OK) {

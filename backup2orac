@@ -1,0 +1,3 @@
+#!/bin/bash
+scp -rv /home/pico/RC2040-cd-ep-new/* 10.42.42.191:/data/myprogs/pico/RC2040
+
