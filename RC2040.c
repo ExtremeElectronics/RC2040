@@ -1670,6 +1670,7 @@ int main(int argc, char *argv[])
         const char  *   s ;
         
         int overclock;
+        int jpc;
 
        	ini_name = "rc2040.ini";
 
@@ -1692,6 +1693,9 @@ int main(int argc, char *argv[])
 
 	  // RAMonly load
 	  ramonly =iniparser_getint(ini, "ROM:ramonly", 0);
+
+	  // start at
+	  jpc = iniparser_getint(ini, "ROM:jumpto", 0);
 
           // Use Ide
 	  ide=iniparser_getint(ini, "IDE:ide",1);
@@ -1781,11 +1785,11 @@ int main(int argc, char *argv[])
         }
         
         //ram only system, hey we are emulating this, we can do ANYTHING!! 
-        if (ramonly){
+        if (ramonly==1){
           // Read RAM from SD
           ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
-          romdisable =1; //disable romswitching
           sprintf(RomTitle,"##### Loading: '%s' 64K RAM only image - CPM CF File:'%s' #####\n\r",romfile,idepath);
+          romdisable =1; //disable romswitching
         }else{
           // Read Rom from SD
           ReadSdToRamrom(fr,romfile,0x2000,0x2000*rombank,USEROM);   //load directly to rom
@@ -1793,7 +1797,7 @@ int main(int argc, char *argv[])
         }
 
 
-        sprintf(RomTitle,"Loading: '%s'[rombank:%i] - CPM CF File:'%s' \n\r",romfile,rombank,idepath);
+//        sprintf(RomTitle,"Loading: '%s'[rombank:%i] - CPM CF File:'%s' \n\r",romfile,rombank,idepath);
         PrintToSelected(RomTitle,1);
 
         have_ctc = 0;
@@ -1850,6 +1854,14 @@ int main(int argc, char *argv[])
 	tc.tv_nsec = 20000000L;
 
 	Z80RESET(&cpu_z80);
+	//nonstandard start vector
+	if(jpc){
+	  cpu_z80.PC=jpc;
+          sprintf(temp,"Starting at 0x%04X \n\r",jpc);
+          PrintToSelected(temp,1);
+
+	}
+	
 	cpu_z80.ioRead = io_read;
 	cpu_z80.ioWrite = io_write;
 	cpu_z80.memRead = mem_read;
