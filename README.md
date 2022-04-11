@@ -51,4 +51,6 @@ http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
 - Etched Pixels: https://hackaday.io/projects/hacker/425483
 - TMS9918A card: https://www.tindie.com/stores/mfkamprath/
 
+### 8 Bit output 
+- port 0 mapped to 8 GPIO pins see circuit diagram
 
