@@ -64,6 +64,9 @@
 #define USERAM 1
 #define USEROM 0
 
+
+
+//RAMROM
 static uint8_t ram[0x10000]; //64k
 static uint8_t rom[0x10000]; //64k
 
@@ -100,6 +103,8 @@ struct ide_controller *ide0;
 char usbcharbuf=0;
 int hasusbcharwaiting=0;
 
+int have_acia = 0;
+
 
 struct acia *acia;
 static uint8_t acia_narrow;
@@ -118,19 +123,48 @@ static int charoutUSB=0;
 
 #define ENDSTDIN 0xFF //non char rx value
 
+
+//PIO
+int PIOA=0;
+
+uint8_t PIOAp[]={16,17,18,19,20,21,26,27};
+
+//pre PCB Circuit diag setup
+//PIOAp[0]=16;
+//PIOAp[1]=17;
+//PIOAp[2]=18;
+//PIOAp[3]=19;
+//PIOAp[4]=20;
+//PIOAp[5]=21;
+//PIOAp[6]=26;
+//PIOAp[7]=27;
+
+
 //PICO GPIO
 // use regular LED
 const uint LEDPIN = PICO_DEFAULT_LED_PIN;
 
-//ROM Address Switches
+/*
+//ROM Address Switches before PCB layout
 const uint ROMA13 = 18;
 const uint ROMA14 = 19;
 const uint ROMA15 = 20;
+
+//
+const uint SELSEL = 21;
+*/
+
 const uint HASSwitchesIO =22;
 //
 int HasSwitches=0;
 //
-const uint SELSEL = 21;
+
+//ROM Address Switches
+const uint ROMA13 = 10;
+const uint ROMA14 = 11;
+const uint ROMA15 = 12;
+
+const uint SELSEL = 13;
 
 
 //buttons
@@ -423,28 +457,30 @@ unsigned int check_chario(void)
 {
    unsigned int r = 0;
    if (UseUsb==0){	
-//	Check UART for Char waiting.
-//        if (uart_is_readable(UART_ID )>0)
-//                r |= 1;//receive ready   
-//        intUARTcharwaiting();
 	if(testUARTcharwaiting()){
-	//bodge.. if currently in interrupt , lie that there is nothng waiting
-	    if(!acia_in_interrupt(acia)){
-                r|=1;//receive ready
-            }
-
-//       if(testUARTcharwaiting()){
-//               r|=1;//receive ready
-
+	//bodge.. if currently in ACIA interrupt , lie that there is nothng waiting
+	//this prevents overruns
+	    if(have_acia==1){
+	        if(!acia_in_interrupt(acia)){
+                    r|=1;//receive ready
+                }
+            }else{
+                r|=1;
+            }     
         }
         if (uart_is_writable(UART_ID )>0)
 	    r |= 2;//transmit ready
    }else{
         if(testUSBcharwaiting()){
          //bodge.. if currently in interrupt , lie that there is nothng waiting
-          if(!acia_in_interrupt(acia)){
-              r|=1;//receive ready
-          }
+         //this prevents overruns
+            if(have_acia==1){
+                if(!acia_in_interrupt(acia)){
+                    r|=1;//receive ready
+                }
+            }else{
+               r|=1;
+            }    
        }
        r |=2; //always ready to tx
    }
@@ -466,7 +502,7 @@ unsigned int next_char(void)
 
     if (c == 0x0A)
         c = '\r';
-    // putchar(c);
+//    putchar(c);
     return c;
 }
 
@@ -648,7 +684,8 @@ static void uart_write(struct uart16x50 *uptr, uint8_t addr, uint8_t val)
     case 0:	/* If dlab = 0, then write else LS*/
         if (uptr->dlab == 0) {
             if (uptr == &uart[0]) {
-                uart_putc(UART_ID,val);
+                //uart_putc(UART_ID,val);
+                out_char(&val);
                 //putchar(val);
                 //fflush(stdout);
             }
@@ -890,13 +927,14 @@ static void sio2_queue(struct z80_sio_chan *chan, uint8_t c)
 
 static void sio2_channel_timer(struct z80_sio_chan *chan, uint8_t ab)
 {
-        printf("SIO SHOULDN'T BE HERE");
 	if (ab == 0) {
 		int c = check_chario();
-
+//		printf("Check chario %i %i \n\r",c,sio2_input);
 		if (sio2_input) {
-			if (c & 1)
+			if (c & 1){
 				sio2_queue(chan, next_char());
+//				printf("Added to q");
+			}
 		}
 		if (c & 2) {
 			if (!(chan->rr[0] & 0x04)) {
@@ -1060,10 +1098,12 @@ static void sio2_write(uint16_t addr, uint8_t val)
 		if (trace & TRACE_SIO)
 			printf( "sio%c write data %d\n", (addr & 2) ? 'b' : 'a', val);
 		if (chan == sio)
-			write(1, &val, 1);
+//			write(1, &val, 1);
+			out_char(&val);
 		else {
 //			write(1, "\033[1m;", 5);
-			write(1, &val,1);
+			//write(1, &val,1);
+			out_char(&val);
 //			write(1, "\033[0m;", 5);
 		}
 	}
@@ -1129,6 +1169,33 @@ static void toggle_rom(void)
 
 }
 
+static void PIOA_init(void){
+//currently all output
+  int a;
+  for (a=0;a<8;a++){
+    gpio_init(PIOAp[a]);
+    gpio_set_dir(PIOAp[a],GPIO_OUT);
+    gpio_pull_up(PIOAp[a]);
+  }
+
+}
+
+static uint8_t PIOA_read(void){
+
+
+}
+
+static void PIOA_write(uint8_t val){
+  int a;
+  uint8_t v=1;
+  for (a=0;a<8;a++){
+    gpio_put(PIOAp[a],v & val); 
+    v=v << 1;
+  }
+
+}
+
+
 static uint8_t io_read_2014(uint16_t addr)
 {
 	if (trace & TRACE_IO)
@@ -1151,6 +1218,8 @@ static uint8_t io_read_2014(uint16_t addr)
 		return my_ide_read(addr & 7);
 	if (addr >= 0xA0 && addr <= 0xA7 && have_16x50)
 		return uart_read(&uart[0], addr & 7);
+	else if (addr==PIOA) return PIOA_read();	
+
 	if (trace & TRACE_UNK)
 		printf( "Unknown read from port %04X\n", addr);
 	return 0x78;	/* 78 is what my actual board floats at */
@@ -1181,6 +1250,7 @@ static void io_write_2014(uint16_t addr, uint8_t val, uint8_t known)
 	/* The switchable/pageable ROM is not very well decoded */
 	else if (switchrom && (addr & 0x7F) >= 0x38 && (addr & 0x7F) <= 0x3F)
 		toggle_rom();
+	else if (addr==PIOA)PIOA_write(val);	
 	else if (addr == 0xFD) {
 		trace &= 0xFF00;
 		trace |= val;
@@ -1540,18 +1610,21 @@ int GetRomSwitches(){
     HasSwitches=0;
   }else{
     //switches present, use values
-    PrintToSelected("\r\nOverriding INI from address/port Switches  \n\r",1);
     HasSwitches=1;
     rombank=0;
     if (gpio_get(ROMA13))rombank+=1;
     if (gpio_get(ROMA14))rombank+=2;
     if (gpio_get(ROMA15))rombank+=4;
+    PrintToSelected("\r\nOverriding INI from ROM/port Switches  \n\r",1);
 
     if (gpio_get(SELSEL)==1){
         UseUsb=1;
+        PrintToSelected("Serial Via USB  \n\r",1);
     }else{
         UseUsb=0;
+        PrintToSelected("Serial Via UART \n\r",1);
     }
+
 
 //if has switches, then has buttons too.
 
@@ -1588,16 +1661,9 @@ int SDFileExists(char * filename){
 
 
 
-
-
-
-
-
-
-
-
-
-
+//#######################################################################################################
+//#                                      MAIN                                                           #
+//#######################################################################################################
 
 
 
@@ -1611,7 +1677,6 @@ int main(int argc, char *argv[])
 	//char *idepath = NULL; 
 	const char * idepath ="CPMIncTransient.cf";
 	
-	int have_acia = 0;
 	int indev;
 	char *patha = NULL, *pathb = NULL;
 	const char * romfile ="R0001009.BIN"; //default ROM image
@@ -1664,6 +1729,7 @@ int main(int argc, char *argv[])
         PrintToSelected(RomTitle,1);
 
 
+
 // inifile parse
 	dictionary * ini ;
 	char       * ini_name ;
@@ -1680,9 +1746,9 @@ int main(int argc, char *argv[])
 	  PrintToSelected(temp,1);
 		
 	  ini = iniparser_load(fr, ini_name);
-//	  iniparser_dump(ini, stdout);
+	  //iniparser_dump(ini, stdout);
 
-//	  ROM select from ini
+	  // ROM select from ini
 	  rombank=0;
 	  if (iniparser_getint(ini, "ROM:a13", 0)) rombank+=1;
 	  if (iniparser_getint(ini, "ROM:a14", 0)) rombank+=2;
@@ -1711,6 +1777,9 @@ int main(int argc, char *argv[])
 
           // Trace enable from inifile
 	  trace=iniparser_getint(ini, "DEBUG:trace",0 );
+
+	  // PORT
+	  PIOA=iniparser_getint(ini, "[PORT]:pioa",0 );
 
           // Overclock
 	  overclock=iniparser_getint(ini, "SPEED:overclock",0 );
@@ -1743,7 +1812,11 @@ int main(int argc, char *argv[])
 
 // "command line" settings"
 
-        cpuboard=0;
+//init PIO
+        if(PIOA<256) PIOA_init();
+
+//init Emulation
+        cpuboard=0;  //remove shouldnt be needed any more
 
 	// IDE ACIA
 	// ./rc2014  -r 24886009.BIN -i CPMIncTransient.cf  -p -s -e 4 -f
@@ -1772,16 +1845,18 @@ int main(int argc, char *argv[])
 	  have_acia = 1;
 	  indev = INDEV_ACIA;
           acia_narrow = 0;
+          PrintToSelected("\rACIA selected\n\r",1);
         }else{
           //SIO enable 
           
           //SIO
           sio2 = 1;
           sio2_input = 1;
+          indev = INDEV_SIO;
           //ACIA
           have_acia = 0;
-          indev = INDEV_ACIA;
           acia_narrow = 0;
+          PrintToSelected("\rSIO selected\n\r",1);
         }
         
         //ram only system, hey we are emulating this, we can do ANYTHING!! 
@@ -1882,16 +1957,16 @@ int main(int argc, char *argv[])
 		int i;
 		/* 36400 T states for base RC2014 - varies for others */
                 if(HasSwitches){       
-	          if(gpio_get(DUMPBUT)==0){
-                     DumpMemory(0,0x10000,fr);
-                     while(gpio_get(DUMPBUT)==0);
-                  }
+	            if(gpio_get(DUMPBUT)==0){
+                        DumpMemory(0,0x10000,fr);
+                        while(gpio_get(DUMPBUT)==0);
+                    }
 
-                  if(gpio_get(RESETBUT)==0) {
-                    PrintToSelected("\r\n####### Z80 RESET ######### \n\n\r",0);
-                    Z80RESET(&cpu_z80);
-                    while(gpio_get(RESETBUT)==0);
-                  }
+                    if(gpio_get(RESETBUT)==0) {
+                        PrintToSelected("\r\n####### Z80 RESET ######### \n\n\r",0);
+                        Z80RESET(&cpu_z80);
+                        while(gpio_get(RESETBUT)==0);
+                    }
                 }
 
 		for (i = 0; i < 40; i++) {  //origional
