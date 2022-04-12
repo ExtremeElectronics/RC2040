@@ -328,7 +328,10 @@ void mem_write(int unused, uint16_t addr, uint8_t val)
 	 mem_write0(addr, val);
 }
 
+
 static unsigned int nbytes;
+
+
 
 uint8_t z80dis_byte(uint16_t addr)
 {
@@ -456,6 +459,7 @@ char getUARTcharwaiting(void){
 unsigned int check_chario(void)
 {
    unsigned int r = 0;
+
    if (UseUsb==0){	
 	if(testUARTcharwaiting()){
 	//bodge.. if currently in ACIA interrupt , lie that there is nothng waiting
@@ -479,7 +483,7 @@ unsigned int check_chario(void)
                     r|=1;//receive ready
                 }
             }else{
-               r|=1;
+                 r|=1;
             }    
        }
        r |=2; //always ready to tx
@@ -801,6 +805,8 @@ static int sio2;
 static int sio2_input;
 static struct z80_sio_chan sio[2];
 
+
+
 /*
  *	Interrupts. We don't handle IM2 yet.
  */
@@ -932,8 +938,10 @@ static void sio2_channel_timer(struct z80_sio_chan *chan, uint8_t ab)
 //		printf("Check chario %i %i \n\r",c,sio2_input);
 		if (sio2_input) {
 			if (c & 1){
-				sio2_queue(chan, next_char());
-//				printf("Added to q");
+			        if(chan->dptr<1){ //prevent overrun
+				  sio2_queue(chan, next_char());
+//				  printf("Added to q");
+				}
 			}
 		}
 		if (c & 2) {
@@ -1170,25 +1178,35 @@ static void toggle_rom(void)
 }
 
 static void PIOA_init(void){
-//currently all output
-  int a;
-  for (a=0;a<8;a++){
-    gpio_init(PIOAp[a]);
-    gpio_set_dir(PIOAp[a],GPIO_OUT);
-    gpio_pull_up(PIOAp[a]);
-  }
+//init gpio ports
+    int a;
+    for (a=0;a<8;a++){
+       gpio_init(PIOAp[a]);
+    }
 
 }
 
 static uint8_t PIOA_read(void){
-
+// set as inputs and read
+    int a;
+    uint8_t v=1;
+    uint8_t r=0;
+    for (a=0;a<8;a++){
+       gpio_set_dir(PIOAp[a],GPIO_IN);
+       gpio_pull_up(PIOAp[a]);
+       if(gpio_get(PIOAp[a]))r=r+v;
+       v=v << 1;
+    }
+    return r;
 
 }
 
 static void PIOA_write(uint8_t val){
+//set as outputs and write
   int a;
   uint8_t v=1;
   for (a=0;a<8;a++){
+    gpio_set_dir(PIOAp[a],GPIO_OUT);
     gpio_put(PIOAp[a],v & val); 
     v=v << 1;
   }
@@ -1296,7 +1314,7 @@ static void reti_event(void)
 
 
 void dumpPC(Z80Context* z80ctx){
-  printf("PC %04x\n",z80ctx->PC);
+    printf("PC %04x\n",z80ctx->PC);
 }
 
 void init_pico_uart(void){
@@ -1628,7 +1646,7 @@ int GetRomSwitches(){
 
 //if has switches, then has buttons too.
 
-//setup DUMPSTOP gpio
+//setup DUMP gpio
     gpio_init(DUMPBUT);
     gpio_set_dir(DUMPBUT,GPIO_IN);
     gpio_pull_up(DUMPBUT);
