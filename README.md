@@ -53,4 +53,7 @@ http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
 
 ### 8 Bit output 
 - port 0 mapped to 8 GPIO pins see circuit diagram
+- out(0,val) will make them outputs outputing val
+- in(0) will make them inputs (with pullups) returning the port state value
+- 
 
