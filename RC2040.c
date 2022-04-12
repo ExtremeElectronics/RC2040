@@ -1739,12 +1739,26 @@ int main(int argc, char *argv[])
         PrintToSelected("SD INIT OK \n\r",1);
 
 //banner
-        sprintf(RomTitle, "\n\n\n\r####################################");
+/*        sprintf(RomTitle, "\n\n\n\r####################################");
         PrintToSelected(RomTitle,1);
         sprintf(RomTitle, "\r\n# PICO RC2040 Derek Woodroffe 2022 #");
         PrintToSelected(RomTitle,1);
         sprintf(RomTitle, "\r\n####################################\n\n\n\r");
         PrintToSelected(RomTitle,1);
+*/
+
+sprintf(RomTitle, "\n\n\r    ###################################");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r   #                                  #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r  #          PICO RC2040              #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r #                                    #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r#  O                                  #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r#          Derek Woodroffe            #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r#               2022                  #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r#                                     #");PrintToSelected(RomTitle,1);
+//sprintf(RomTitle,   "\n\r#                                     #");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r#######################################");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r | | | | | | | | | | | | | | | | | | | \n\n\r");PrintToSelected(RomTitle,1);
+
 
 
 
