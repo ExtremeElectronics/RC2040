@@ -1760,7 +1760,8 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
 	dictionary * ini ;
 	char       * ini_name ;
         const char  *   s ;
-        
+        const char * inidesc;
+                
         int overclock;
         int jpc;
 
@@ -1801,6 +1802,11 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
 
 	  // ACIA /SERIAL
           SerialType=iniparser_getint(ini, "EMULATION:serialtype",0 );
+          
+          // ININAME
+          inidesc=iniparser_getstring(ini, "EMULATION:inidesc","Default ini" );
+          sprintf(temp,"INI Description: %s \n\r",inidesc,1);
+          PrintToSelected(temp,1);
 
           // Trace enable from inifile
 	  trace=iniparser_getint(ini, "DEBUG:trace",0 );
