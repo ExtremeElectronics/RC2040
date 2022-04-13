@@ -1408,11 +1408,12 @@ void WriteRamromToSd(FRESULT fr,char * filename,int writesize,int readfromram){
 }
 
 void ReadSdToRamrom(FRESULT fr,const char * filename,int readsize,int SDoffset,int writetoram ){
-    if(writetoram){
+/*    if(writetoram){
       printf("\n##### Reading %s from SD %04x to RAM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
     }else{
       printf("\n##### Reading %s from SD %04x to ROM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
     }
+*/
     FIL fil;
     fr = f_open(&fil, filename, FA_READ); //FA_WRITE
     if (FR_OK != fr && FR_EXIST != fr){
@@ -1637,10 +1638,10 @@ int GetRomSwitches(){
 
     if (gpio_get(SELSEL)==1){
         UseUsb=1;
-        PrintToSelected("Serial Via USB  \n\r",1);
+        PrintToSelected("Console Via USB  \n\r",1);
     }else{
         UseUsb=0;
-        PrintToSelected("Serial Via UART \n\r",1);
+        PrintToSelected("Console Via UART \n\r",1);
     }
 
 
@@ -1692,13 +1693,14 @@ int main(int argc, char *argv[])
 	int fd;
 	int romen = 1;
 	int ramonly=0; //disble rom copy 64K romfile directly to ram
+	
 	//char *idepath = NULL; 
 	const char * idepath ="CPMIncTransient.cf";
 	
 	int indev;
 	char *patha = NULL, *pathb = NULL;
 	const char * romfile ="R0001009.BIN"; //default ROM image
-
+        uint16_t romsize =0x2000;
         char temp[250];
 	
 	int SerialType =0; //ACIA=0 SIO=1
@@ -1739,25 +1741,17 @@ int main(int argc, char *argv[])
         PrintToSelected("SD INIT OK \n\r",1);
 
 //banner
-/*        sprintf(RomTitle, "\n\n\n\r####################################");
-        PrintToSelected(RomTitle,1);
-        sprintf(RomTitle, "\r\n# PICO RC2040 Derek Woodroffe 2022 #");
-        PrintToSelected(RomTitle,1);
-        sprintf(RomTitle, "\r\n####################################\n\n\n\r");
-        PrintToSelected(RomTitle,1);
-*/
 
-sprintf(RomTitle, "\n\n\r    ###################################");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r   #                                  #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r  #          PICO RC2040              #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r #                                    #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r#  O                                  #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r#          Derek Woodroffe            #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r#               2022                  #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r#                                     #");PrintToSelected(RomTitle,1);
-//sprintf(RomTitle,   "\n\r#                                     #");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r#######################################");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r | | | | | | | | | | | | | | | | | | | \n\n\r");PrintToSelected(RomTitle,1);
+sprintf(RomTitle, "\n\n\r     _________________________________");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r    /                                |");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r   /          PICO RC2040            |");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r  /                                  |");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r |  O                                |");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r |          Derek Woodroffe          |");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r |               2022                |");PrintToSelected(RomTitle,1);
+//sprintf(RomTitle,   "\n\r |                                   |");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r |___________________________________|");PrintToSelected(RomTitle,1);
+sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,1);
 
 
 
@@ -1788,6 +1782,7 @@ sprintf(RomTitle,   "\n\r | | | | | | | | | | | | | | | | | | | \n\n\r");PrintTo
 
 	  // ROMfile from ini
 	  romfile = iniparser_getstring(ini, "ROM:romfile", romfile);
+	  romsize = iniparser_getint(ini, "ROM:romsize", 0x2000);
 
 	  // RAMonly load
 	  ramonly =iniparser_getint(ini, "ROM:ramonly", 0);
@@ -1802,7 +1797,7 @@ sprintf(RomTitle,   "\n\r | | | | | | | | | | | | | | | | | | | \n\n\r");PrintTo
 	  idepath =iniparser_getstring(ini, "IDE:idefile", idepath);
 	  
 	  // USB or UART
-	  UseUsb=iniparser_getint(ini, "SERIAL:port", 1);
+	  UseUsb=iniparser_getint(ini, "CONSOLE:port", 1);
 
 	  // ACIA /SERIAL
           SerialType=iniparser_getint(ini, "EMULATION:serialtype",0 );
@@ -1899,8 +1894,10 @@ sprintf(RomTitle,   "\n\r | | | | | | | | | | | | | | | | | | | \n\n\r");PrintTo
           romdisable =1; //disable romswitching
         }else{
           // Read Rom from SD
-          ReadSdToRamrom(fr,romfile,0x2000,0x2000*rombank,USEROM);   //load directly to rom
-          sprintf(RomTitle,"##### Loading: '%s'[rombank:%i] CPM CF File:'%s' #####\n\r",romfile,rombank,idepath);
+          ReadSdToRamrom(fr,romfile,romsize,0x2000*rombank,USEROM);   //load directly to rom
+          sprintf(RomTitle,"##### Loading: '%s'[rombank:%i] for 0x%X bytes #####\n\r",romfile,rombank,romsize);
+          PrintToSelected(RomTitle,1);
+          sprintf(RomTitle,"##### CPM/IDE CF File:'%s' #####\n\r",idepath);
         }
 
 
