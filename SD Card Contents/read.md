@@ -113,4 +113,6 @@ pioa=0
 [IDE]
 ide=0; //Turn off IDE
 
+[EMULATION]
+inidesc="Broken INI file"; //ini file description to show at boot 
 
