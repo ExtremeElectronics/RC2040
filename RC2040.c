@@ -1890,14 +1890,14 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
         if (ramonly==1){
           // Read RAM from SD
           ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
-          sprintf(RomTitle,"##### Loading: '%s' 64K RAM only image - CPM CF File:'%s' #####\n\r",romfile,idepath);
+          sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s' \n\r",romfile,idepath);
           romdisable =1; //disable romswitching
         }else{
           // Read Rom from SD
           ReadSdToRamrom(fr,romfile,romsize,0x2000*rombank,USEROM);   //load directly to rom
-          sprintf(RomTitle,"##### Loading: '%s'[rombank:%i] for 0x%X bytes #####\n\r",romfile,rombank,romsize);
+          sprintf(RomTitle,"Loading: '%s'[rombank:%i] for 0x%X bytes \n\r",romfile,rombank,romsize);
           PrintToSelected(RomTitle,1);
-          sprintf(RomTitle,"##### CPM/IDE CF File:'%s' #####\n\r",idepath);
+          sprintf(RomTitle,"CPM/IDE CF File:'%s' \n\r",idepath);
         }
 
 
@@ -1972,7 +1972,9 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
 	cpu_z80.memWrite = mem_write;
 	cpu_z80.trace = z80_trace;
 
-	PrintToSelected("\r\n######## RC2040 STARTING #########\n\n\r",0);
+	PrintToSelected("\r\n ##################################\n\r",0);
+	PrintToSelected(" ######## RC2040 STARTING #########\n\r",0);
+	PrintToSelected(" ##################################\n\n\r",0);
 
 	/* This is the wrong way to do it but it's easier for the moment. We
 	   should track how much real time has occurred and try to keep cycle
@@ -1992,7 +1994,9 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
                     }
 
                     if(gpio_get(RESETBUT)==0) {
-                        PrintToSelected("\r\n####### Z80 RESET ######### \n\n\r",0);
+                        PrintToSelected("\r\n ########################### \n\r",0);
+                        PrintToSelected("####### Z80 RESET ######### \n\r",0);
+                        PrintToSelected("########################### \n\n\r",0);
                         Z80RESET(&cpu_z80);
                         while(gpio_get(RESETBUT)==0);
                     }
