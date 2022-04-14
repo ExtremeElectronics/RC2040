@@ -61,8 +61,11 @@ struct ide_drive {
   uint8_t *dptr;
   int state;
   FIL fd;
+  FIL fi;
 //  int fd;
   off_t offset;
+  int iscf;
+  int cfoff; //offset for cf files
   int length;
 };
 
@@ -84,9 +87,9 @@ uint8_t ide_read_latched(struct ide_controller *c, uint8_t r);
 void ide_write_latched(struct ide_controller *c, uint8_t r, uint8_t v);
 
 struct ide_controller *ide_allocate(const char *name);
-int ide_attach(struct ide_controller *c, int drive, FIL fd);
+int ide_attach(struct ide_controller *c, int drive, FIL fi, FIL fd,int iscf);
 void ide_detach(struct ide_drive *d);
 void ide_free(struct ide_controller *c);
 
-int ide_make_drive(uint8_t type, FIL fd);
+int ide_make_drive(uint8_t type, FIL fi, FIL fd,int iscf);
 #endif

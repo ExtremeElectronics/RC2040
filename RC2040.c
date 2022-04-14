@@ -1695,7 +1695,8 @@ int main(int argc, char *argv[])
 	int ramonly=0; //disble rom copy 64K romfile directly to ram
 	
 	//char *idepath = NULL; 
-	const char * idepath ="CPMIncTransient.cf";
+	const char * idepathi ="";
+	const char * idepath ="";
 	
 	int indev;
 	char *patha = NULL, *pathb = NULL;
@@ -1764,6 +1765,7 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
                 
         int overclock;
         int jpc;
+        int iscf=0;
 
        	ini_name = "rc2040.ini";
 
@@ -1795,6 +1797,9 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
 	  ide=iniparser_getint(ini, "IDE:ide",1);
 	  
 	  // IDE cf file
+	  iscf=iniparser_getint(ini, "IDE:iscf", iscf);
+	  
+	  idepathi =iniparser_getstring(ini, "IDE:idefilei", "");
 	  idepath =iniparser_getstring(ini, "IDE:idefile", idepath);
 	  
 	  // USB or UART
@@ -1896,14 +1901,14 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
         if (ramonly==1){
           // Read RAM from SD
           ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
-          sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s' \n\r",romfile,idepath);
+          sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s %s' \n\r",romfile,idepathi,idepath);
           romdisable =1; //disable romswitching
         }else{
           // Read Rom from SD
           ReadSdToRamrom(fr,romfile,romsize,0x2000*rombank,USEROM);   //load directly to rom
           sprintf(RomTitle,"Loading: '%s'[rombank:%i] for 0x%X bytes \n\r",romfile,rombank,romsize);
           PrintToSelected(RomTitle,1);
-          sprintf(RomTitle,"CPM/IDE CF File:'%s' \n\r",idepath);
+          sprintf(RomTitle,"CPM/IDE CF File:'%s %s' \n\r",idepathi,idepath);
         }
 
 
@@ -1915,19 +1920,28 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
 	tstate_steps = 500;
 
   	if (ide == 1 ) {
-		FIL fil;
+		FIL fili;
+		FIL fild;
 		ide0 = ide_allocate("cf");
 		if (ide0) {
 			//printf("IDE open %s \n",idepath);
-                        FRESULT ide_fr=f_open(&fil, idepath, FA_READ | FA_WRITE);
-                        
-                        if (ide_fr != FR_OK) {
+			if (iscf==0){
+                          FRESULT ide_fri=f_open(&fili, idepathi, FA_READ | FA_WRITE);
+                          if (ide_fri != FR_OK) {
+                              printf("Error IDE ident file Open Fail %s ",idepathi);
+                              ide = 0;
+                              if (trace & TRACE_IDE) printf( "IDE0 ident file Open fail");
+                          }    
+                        }
+                        FRESULT ide_frd=f_open(&fild, idepath, FA_READ | FA_WRITE);
+                        if ( ide_frd != FR_OK) {
 				//perror(idepath);
-				printf("Error IDE Open Fail %s",idepath);
+				printf("Error IDE Data Open Fail %s ",idepath);
 				ide = 0;
-				if (trace & TRACE_IDE) printf( "IDE0 Open fail");
+				if (trace & TRACE_IDE) printf( "IDE0 Data Open fail");
 			}
-			if (ide_attach(ide0, 0, fil) == 0) {
+//			if (ide_attach(ide0, 0, fil) == 0) {
+			if (ide_attach(ide0, 0, fili,fild,iscf) == 0) {
 				ide = 1;
 				ide_reset_begin(ide0);
 				if (trace & TRACE_IDE) printf( "IDE0 Open OK");

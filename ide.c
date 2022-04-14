@@ -153,7 +153,8 @@ static off_t xlate_block(struct ide_taskfile *t)
 /*    printf( "XLATE LBA %02X:%02X:%02X:%02X\n",
       t->lba4, t->lba3, t->lba2, t->lba1);*/
     if (d->lba)
-      return 2 + (((t->lba4 & DEVH_HEAD) << 24) | (t->lba3 << 16) | (t->lba2 << 8) | t->lba1);
+//      return 2 + (((t->lba4 & DEVH_HEAD) << 24) | (t->lba3 << 16) | (t->lba2 << 8) | t->lba1);
+      return d->cfoff + (((t->lba4 & DEVH_HEAD) << 24) | (t->lba3 << 16) | (t->lba2 << 8) | t->lba1);
     ide_fault(d, "LBA on non LBA drive");
   }
 
@@ -316,7 +317,7 @@ static void cmd_readsectors_complete(struct ide_taskfile *tf)
     drive_failed(tf);
     return;
   }
-  d->offset = xlate_block(tf);
+  d->offset = xlate_block(tf); //if CF offset 2 sectors
   /* DRDY is not guaranteed here but at least one buggy RC2014 firmware
      expects it */
   tf->status |= ST_DRQ | ST_DSC | ST_DRDY;
@@ -346,6 +347,7 @@ static void cmd_verifysectors_complete(struct ide_taskfile *tf)
     return;
   }
   d->offset = xlate_block(tf);
+  
   /* 0 = 256 sectors */
   d->length = tf->count ? tf->count : 256;
 //  if (d->offset == -1 || lseek(d->fd, 512 * (d->offset + d->length - 1), SEEK_SET) == -1) {
@@ -753,7 +755,7 @@ struct ide_controller *ide_allocate(const char *name)
 /*
  *	Attach a file to a device on the controller
  */
-int ide_attach(struct ide_controller *c, int drive, FIL fd)
+int ide_attach(struct ide_controller *c, int drive, FIL fi,FIL fd,int iscf )
 {
   struct ide_drive *d = &c->drive[drive];
   if (d->present) {
@@ -765,10 +767,17 @@ int ide_attach(struct ide_controller *c, int drive, FIL fd)
   UINT br2;
 
   d->fd = fd;
-//  if (read(d->fd, d->data, 512) != 512 ||
-//      read(d->fd, d->identify, 512) != 512) {
-  f_read(&d->fd, d->data, 512,&br1);
-  f_read(&d->fd, d->identify, 512,&br2);
+  d->fi = fi;
+  d->iscf=iscf;
+  if(iscf){   
+    d->cfoff=2; //cf files have 2 sector header 
+    f_read(&d->fd, d->data, 512,&br1);
+    f_read(&d->fd, d->identify, 512,&br2);
+  }else{
+    d->cfoff=0; //img files dont have 2 sector header
+    f_read(&d->fi, d->data, 512,&br1);
+    f_read(&d->fi, d->identify, 512,&br2);
+  }
   if (br1!= 512 || br2!=512){
 
     ide_fault(d, "i/o error on attach");
@@ -779,6 +788,7 @@ int ide_attach(struct ide_controller *c, int drive, FIL fd)
     return -1;
   }
   d->fd = fd;
+  d->fi = fi;
   d->present = 1;
   d->heads = d->identify[3];
   d->sectors = d->identify[6];
@@ -796,6 +806,7 @@ int ide_attach(struct ide_controller *c, int drive, FIL fd)
 void ide_detach(struct ide_drive *d)
 {
   f_close(&d->fd);
+  if(!&d->iscf)  f_close(&d->fi);
 //  d->fd = -1;
   d->present = 0;
 }
@@ -865,7 +876,7 @@ static void make_serial(uint16_t *p)
   make_ascii(p, buf, 20);
 }
 
-int ide_make_drive(uint8_t type,  FIL fd)
+int ide_make_drive(uint8_t type,  FIL fi, FIL fd, int iscf)
 {
   uint8_t s, h;
   uint16_t c;
@@ -879,7 +890,11 @@ int ide_make_drive(uint8_t type,  FIL fd)
   memcpy(ident, ide_magic, 8);
 //  if (write(fd, ident, 512) != 512)
   UINT bw;
-  f_write(&fd, ident, 512, &bw);
+  if(iscf){
+    f_write(&fd, ident, 512, &bw);
+  }else{
+    f_write(&fi, ident, 512, &bw);
+  }
   if (bw != 512){
      printf("ide make drive error 1\n");
     return -1;
@@ -958,7 +973,11 @@ int ide_make_drive(uint8_t type,  FIL fd)
   ident[60] = ident[57];
   ident[61] = ident[58];
 //  if (write(fd, ident, 512) != 512)
-  f_write(&fd, ident, 512,&bw);
+  if(iscf){
+    f_write(&fd, ident, 512,&bw);
+  }else{
+    f_write(&fi, ident, 512,&bw);
+  }
   if (bw != 512){
     printf("ide write sector error 2\n");
     return -1;
@@ -967,7 +986,11 @@ int ide_make_drive(uint8_t type,  FIL fd)
   memset(ident, 0xE5, 512);
   while(sectors--)
 //    if (write(fd, ident, 512) != 512)
-    f_write(&fd, ident, 512,&bw);
+    if(iscf){ 
+      f_write(&fd, ident, 512,&bw);
+    }else{
+      f_write(&fi, ident, 512,&bw);
+    }
     if (bw != 512){
         printf("ide write sector error 3\n");
         return -1;
