@@ -6,7 +6,10 @@ Copy the .bin and (unzipped) .cf files from this directory onto the CD Card.
 
 Thats it... 
 
+_______________________________________________________________________________________________________
 
+#### NOTE CF is nolonger the default IDE format
+changed to .img format with a 1K id(identification) file
 _______________________________________________________________________________________________________
 
 ### INI file advanced usage.
@@ -32,6 +35,7 @@ Config with no switches and other emulation settings
 
 [IDE]
 idefile = "CPMIncTransient.cf"; //Specify the CF file loaded as IDE drives
+iscf=1;
 
 [ROM]
 a13 = 0; // Address switches 0=0x0000 100=0x8000 111=0xE000
@@ -75,6 +79,7 @@ Config with no switches and other emulation settings
 
 [IDE]
 idefile = "CPMIncTransient.cf"; //Specify the CF file loaded as IDE drives
+iscf=1;
 
 [ROM]
 a13 = 0; // Address switches 0=0x0000 100=0x8000 111=0xE000
@@ -112,6 +117,7 @@ pioa=0
 
 [IDE]
 ide=0; //Turn off IDE
+iscf=0; //enable raw img file with 1K id file. 
 
 [EMULATION]
 inidesc="Broken INI file"; //ini file description to show at boot 
