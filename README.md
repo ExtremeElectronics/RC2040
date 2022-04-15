@@ -19,7 +19,7 @@ cloned this RC2040 git into a subdirectory under the pico one then,
   for more details look at compiling.md
   
 # SD card connection to the Pico
-Details are in the Circuit diagram folder. Switches and buttons are not required. just an SD card that can be easily attached using an old SD adapter. 
+Details are in the Circuit diagram folder. Switches and buttons are not required. Just an SD card that can be easily attached using an old SD adapter. (diagram for this in the Circuit diagram folder)
 
 # Serial connection details 
 
@@ -27,13 +27,19 @@ UART 115200 N81 3ms/char delay - 3ms/line delay (1ms /3ms if overclocked at 2500
 
 USB  115200 N81 3ms/char delay - 3ms/line delay (1ms /3ms if overclocked at 250000)
 
+# 8 Bit output 
+- port 0 mapped to 8 GPIO pins see circuit diagram
+- out(0,val) will make them outputs outputing val
+- in(0) will make them inputs (with pullups) returning the port state value
+- 
+
 # Progress
 
 Now looking at documenting it and adding "usefull" stuff to the build
 
-Huge thanks goes to EtchedPixels, Grant Searle , Mitch Lalovic and Spencer Owen(Rc2014) for collating, modifying and allowing us to play with their software. 
+Huge thanks goes to EtchedPixels, Grant Searle , Mitch Lalovic and Spencer Owen(Rc2014) for collating, modifying and allowing us to play with their software. and https://github.com/guidol70 for help with the img/cf file formats and diskdefs 
 
-SD card images (a get you started , is available in the SD Card Contents sub folder) other rom images can be found :- 
+SD card images (a get you started , is available in the SD Card Contents sub folder) other ROM images can be found :- 
 
 
 ### ROM images:
@@ -56,9 +62,5 @@ http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
 - Etched Pixels: https://hackaday.io/projects/hacker/425483
 - TMS9918A card: https://www.tindie.com/stores/mfkamprath/
 
-### 8 Bit output 
-- port 0 mapped to 8 GPIO pins see circuit diagram
-- out(0,val) will make them outputs outputing val
-- in(0) will make them inputs (with pullups) returning the port state value
-- 
+
 
