@@ -1,0 +1,218 @@
+# offset calculation for RC2040 CPMIncTransient.cf file with 1024 bytes (1k) header against .img-file
+# created by Guido Lehwalder - 15th April 2022
+# header 1024 bytes = compares to 2 x seclen/sectors of 512 bytes
+# offset from one partition to another = 512 tracks = x32 sectors = 16384 sectors  
+# offset for drivename a: - p: = 2 sectors header + ( partno (a:0-p:15) x (512 tracks x 32 sectrk)
+
+# rc2040cfa
+diskdef rc2040cfa
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+# rc2040cfa = BOOT
+  boottrk 1
+  # Offset of the rc2040cfa partition
+  # rc2040cfa ( 2 + 0 x( 512 x 32 ) =  2 
+  offset 2sec
+  os 2.2
+end
+
+# rc2040cfb
+diskdef rc2040cfb
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+# rc2040cfb = NOBOOT
+  boottrk 0
+  # Offset of the rc2040cfb partition
+  # rc2040cfb ( 2 + 1 x( 512 x 32 ) =  16386 
+  offset 16386sec
+  os 2.2
+end
+
+diskdef rc2040cfc
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfc partition
+  # rc2040cfc ( 2 + 2 x( 512 x 32 ) =  32770 
+  offset 32770sec
+  os 2.2
+end
+
+diskdef rc2040cfd
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfd partition
+  # rc2040cfd ( 2 + 3 x( 512 x 32 ) =  49154 
+  offset 49154sec
+  os 2.2
+end
+
+diskdef rc2040cfe
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfe partition
+  # rc2040cfe ( 2 + 4 x( 512 x 32 ) =  65538 
+  offset 65538sec
+  os 2.2
+end
+
+diskdef rc2040cff
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cff partition
+  # rc2040cff ( 2 + 5 x( 512 x 32 ) =  81922 
+  offset 81922sec
+  os 2.2
+end
+
+diskdef rc2040cfg
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfg partition
+  # rc2040cfg ( 2 + 6 x( 512 x 32 ) =  98306 
+  offset 98306sec
+  os 2.2
+end
+
+diskdef rc2040cfh
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfh partition
+  # rc2040cfh ( 2 + 7 x( 512 x 32 ) =  114690 
+  offset 114690sec
+  os 2.2
+end
+
+diskdef rc2040cfi
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfi partition
+  # rc2040cfi ( 2 + 8 x( 512 x 32 ) =  131074 
+  offset 131074sec
+  os 2.2
+end
+
+diskdef rc2040cfj
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfj partition
+  # rc2040cfj ( 2 + 9 x( 512 x 32 ) =  147458 
+  offset 147458sec
+  os 2.2
+end
+
+diskdef rc2040cfk
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfk partition
+  # rc2040cfk ( 2 + 10 x( 512 x 32 ) =  163842 
+  offset 163842sec
+  os 2.2
+end
+
+diskdef rc2040cfl
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfl partition
+  # rc2040cfl ( 2 + 11 x( 512 x 32 ) =  180226 
+  offset 180226sec
+  os 2.2
+end
+
+diskdef rc2040cfm
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfm partition
+  # rc2040cfm ( 2 + 12 x( 512 x 32 ) =  196610 
+  offset 196610sec
+  os 2.2
+end
+
+diskdef rc2040cfn
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfn partition
+  # rc2040cfn ( 2 + 13 x( 512 x 32 ) =  212994 
+  offset 212994sec
+  os 2.2
+end
+
+diskdef rc2040cfo
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfo partition
+  # rc2040cfo ( 2 + 14 x( 512 x 32 ) =  229378 
+  offset 229378sec
+  os 2.2
+end
+
+diskdef rc2040cfp
+  seclen 512
+  tracks 128
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040cfp partition
+  # rc2040cfp ( 2 + 15 x( 512 x 32 ) =  245762 
+  offset 245762sec
+  os 2.2
+end
+
