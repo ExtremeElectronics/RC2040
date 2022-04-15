@@ -16,6 +16,8 @@ cloned this RC2040 git into a subdirectory under the pico one then,
   cmake ..
   make
   
+  for more details look at compiling.md
+  
 # SD card connection to the Pico
 Details are in the Circuit diagram folder. Switches and buttons are not required. just an SD card that can be easily attached using an old SD adapter. 
 
