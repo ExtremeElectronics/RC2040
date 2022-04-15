@@ -1191,10 +1191,16 @@ static uint8_t PIOA_read(void){
     int a;
     uint8_t v=1;
     uint8_t r=0;
+    //set pullups make input
     for (a=0;a<8;a++){
        gpio_set_dir(PIOAp[a],GPIO_IN);
        gpio_pull_up(PIOAp[a]);
+    }
+    sleep_ms(1);
+    //get bits disable pullups
+    for (a=0;a<8;a++){   
        if(gpio_get(PIOAp[a]))r=r+v;
+       gpio_disable_pulls(PIOAp[a]);
        v=v << 1;
     }
     return r;
@@ -1723,11 +1729,12 @@ int main(int argc, char *argv[])
         flash_led(250);
         stdio_usb_init();
         flash_led(250);
-        printf("\rUSB INIT OK \n\r");
+        printf("\n %c[2J\n\n\rUSB INIT OK \n\r",27);
                 
 //init uart
         init_pico_uart();
-        uart_puts(UART_ID,"\rUSB INIT OK \n\r");
+        sprintf(RomTitle,"\n %c[2J \n\n\rUART INIT OK \n\r",27);
+        uart_puts(UART_ID,RomTitle);
 
 
 // mount SD Card
@@ -1743,16 +1750,16 @@ int main(int argc, char *argv[])
 
 //banner
 
-sprintf(RomTitle, "\n\n\r     _________________________________");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r    /                                |");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r   /          PICO RC2040            |");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r  /                                  |");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r |  O                                |");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r |          Derek Woodroffe          |");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r |               2022                |");PrintToSelected(RomTitle,1);
-//sprintf(RomTitle,   "\n\r |                                   |");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r |___________________________________|");PrintToSelected(RomTitle,1);
-sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle, "\n\n\r     ________________________________");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r    /                                |");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r   /          PICO RC2040            |");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r  /                                  |");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r |  O                                |");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r |          Derek Woodroffe          |");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r |               2022                |");PrintToSelected(RomTitle,1);
+        //sprintf(RomTitle,   "\n\r |                                   |");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r |___________________________________|");PrintToSelected(RomTitle,1);
+        sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,1);
 
 
 
@@ -1908,7 +1915,7 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
           ReadSdToRamrom(fr,romfile,romsize,0x2000*rombank,USEROM);   //load directly to rom
           sprintf(RomTitle,"Loading: '%s'[rombank:%i] for 0x%X bytes \n\r",romfile,rombank,romsize);
           PrintToSelected(RomTitle,1);
-          sprintf(RomTitle,"CPM/IDE CF File:'%s %s' \n\r",idepathi,idepath);
+          sprintf(RomTitle,"CPM/IDE File:'%s %s' \n\r",idepath,idepathi);
         }
 
 
@@ -2015,8 +2022,8 @@ sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToS
 
                     if(gpio_get(RESETBUT)==0) {
                         PrintToSelected("\r\n ########################### \n\r",0);
-                        PrintToSelected("####### Z80 RESET ######### \n\r",0);
-                        PrintToSelected("########################### \n\n\r",0);
+                        PrintToSelected(" ####### Z80 RESET ######### \n\r",0);
+                        PrintToSelected(" ########################### \n\n\r",0);
                         Z80RESET(&cpu_z80);
                         while(gpio_get(RESETBUT)==0);
                     }
