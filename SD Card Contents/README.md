@@ -1,8 +1,8 @@
-### SD card creation
+## SD card creation
 
 Format your SD with a FAT32 file system
 
-Copy the .bin and (unzipped) .cf files from this directory onto the CD Card.
+Copy the .ini, .bin, .id and (unzipped) .img files from this directory onto the CD Card.
 
 Thats it... 
 
@@ -13,7 +13,7 @@ changed to .img format with a 1K id(identification) file
 if you want to use .cf add iscf=1 to the IDE section of the ini file 
 _______________________________________________________________________________________________________
 
-### INI file advanced usage.
+## INI file advanced usage.
 
 
 ### Using SIO based software
