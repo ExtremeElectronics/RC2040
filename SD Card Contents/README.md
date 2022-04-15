@@ -10,6 +10,7 @@ ________________________________________________________________________________
 
 #### NOTE CF is nolonger the default IDE format
 changed to .img format with a 1K id(identification) file
+if you want to use .cf add iscf=1 to the IDE section of the ini file 
 _______________________________________________________________________________________________________
 
 ### INI file advanced usage.
