@@ -35,16 +35,8 @@ USB  115200 N81 3ms/char delay - 3ms/line delay (1ms /3ms if overclocked at 2500
 - in(0) will make them inputs (with pullups) returning the port state value
 - 
 
-# Progress
-
-Now looking at documenting it and adding "usefull" stuff to the build
-
-Huge thanks goes to EtchedPixels, Grant Searle , Mitch Lalovic and Spencer Owen(Rc2014) for collating, modifying and allowing us to play with their software. and https://github.com/guidol70 for help with the img/cf file formats and diskdefs 
-
-SD card images (a get you started , is available in the SD Card Contents sub folder) other ROM images can be found :- 
-
-
 ### ROM images:
+SD card images (a get you started , is available in the SD Card Contents sub folder) other ROM images can be found :- 
 - Z80 Base ROM images - https://github.com/RC2014Z80/RC2014/tree/master/ROMs/Factory
 - Z80/180 Small Computer Monitor - https://smallcomputercentral.wordpress.com/small-computer-monitor/
 - Z80/180 ROMWBW - https://github.com/wwarthen/RomWBW/releases
@@ -65,4 +57,35 @@ http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
 - TMS9918A card: https://www.tindie.com/stores/mfkamprath/
 
 
+###Sound
+Sound is output on GPIO 14/15. Gpio15 is inverted WRT 14 so you can out a speaker directly across these two IO pins. A much better sound quality can be heard using a low pass filter and an amplifier.
+
+#Beep 
+A background frequency generator can be accessed via Port 0x31 
+there are 126 notes defined 1-127 (from midi notes) sending either 0 or >128 will scielence the currently playing note.
+
+#SPO256-al2
+An Emulation of the SPO256-al2 chip can be accessed on port 0x32
+Sending a value of 0-63 will play one of the predefined allophones that was contained in the origional chip. 
+reading the port will give you a non-zero value if the "chip" is still playing. 
+
+See the SPO256-AL2 folder for more information.
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Progress
+
+Now looking at documenting it and adding "usefull" stuff to the build
+
+Huge thanks goes to EtchedPixels, Grant Searle , Mitch Lalovic and Spencer Owen(Rc2014) for collating, modifying and allowing us to play with their software. and https://github.com/guidol70 for help with the img/cf file formats and diskdefs 
 
