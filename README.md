@@ -69,16 +69,7 @@ An Emulation of the SPO256-al2 chip can be accessed on port 0x32
 Sending a value of 0-63 will play one of the predefined allophones that was contained in the origional chip. 
 reading the port will give you a non-zero value if the "chip" is still playing. 
 
-See the SPO256-AL2 folder for more information.
-
-
-
-
-
-
-
-
-
+See my SPO256-AL2 Git folder https://github.com/ExtremeElectronics/spo256-al2  for more information.
 
 
 
