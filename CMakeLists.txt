@@ -1,3 +1,4 @@
+
   cmake_minimum_required(VERSION 3.13)
 
   set(CMAKE_C_STANDARD 11)
@@ -11,7 +12,10 @@
 
 
   add_executable(RC2040
-	RC2040.c ide.c z80dis.c acia.c
+	RC2040.c 
+        ide.c 
+        z80dis.c 
+        acia.c
         hw_config.c
         dictionary.c
 	iniparser.c
@@ -28,6 +32,9 @@
 
   # Add the standard library and FatFS/SPI to the build
   target_link_libraries(RC2040 
+    pico_multicore
+    hardware_gpio 
+    hardware_pwm
     pico_stdlib
     FatFs_SPI
     libz80
