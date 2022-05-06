@@ -57,15 +57,15 @@ http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
 - TMS9918A card: https://www.tindie.com/stores/mfkamprath/
 
 
-###Sound
+### Sound
 Sound is output on GPIO 14/15. Gpio15 is inverted WRT 14 so you can out a speaker directly across these two IO pins. A much better sound quality can be heard using a low pass filter and an amplifier.
 
-#Beep 
+# Beep 
 A background frequency generator can be accessed via Port 0x31 
 there are 126 notes defined 1-127 (from midi notes) sending either 0 or >128 will scielence the currently playing note.
 
-#SPO256-al2
-An Emulation of the SPO256-al2 chip can be accessed on port 0x32
+# SPO256-al2
+An Emulation of the SPO256-al2 chip can be accessed on port 0x30
 Sending a value of 0-63 will play one of the predefined allophones that was contained in the origional chip. 
 reading the port will give you a non-zero value if the "chip" is still playing. 
 
