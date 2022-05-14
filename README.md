@@ -5,6 +5,11 @@ Z80 emulation of RC2014 using the RP2040 processor.
 Initial aim was to get the [EtchedPixels](https://github.com/EtchedPixels) Linuxibased Z80 emulation including an SD Card based IDE running on a Pi Pico as a standalone.
 I have ripped out much of EtchedPixels's great work, to which I'm truly sorry, but I was only interested in the Z80 emulation, and I needed to get it to fit in an RP2040
 
+## PCB
+A PCB and a full kit of parts is available here https://extkits.co.uk/product/rc2040/ for this project from Extreme Kits http://www.extkits.co.uk 
+
+![20220514_162232](https://user-images.githubusercontent.com/102665314/168440015-87bc3225-e370-4dfc-a1a9-9be01d625213.jpg)
+
 ## Documentation
 
 A lot more detail is available at https://www.extremeelectronics.co.uk/the-rc2040/
