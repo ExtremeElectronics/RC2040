@@ -2,7 +2,7 @@
 
 Z80 emulation of RC2014 using the RP2040 processor.
 
-Initial aim was to get the [EtchedPixels](https://github.com/EtchedPixels) Linuxibased Z80 emulation including an SD Card based IDE running on a Pi Pico as a standalone.
+Initial aim was to get the [EtchedPixels](https://github.com/EtchedPixels) Linux based Z80 emulation including an SD Card based IDE running on a Pi Pico as a standalone.
 I have ripped out much of EtchedPixels's great work, to which I'm truly sorry, but I was only interested in the Z80 emulation, and I needed to get it to fit in an RP2040
 
 ## PCB
@@ -73,7 +73,7 @@ SD card images (a "get you started" is available in the [SD Card Contents] sub f
 
 ### Sound
 
-Sound is output on GPIO 14/15. GPIO 15 is inverted WRT 14 so you can out a speaker directly across these two IO pins. A much better sound quality can be heard using a low pass filter and an amplifier.
+Sound is output on GPIO 14/15. GPIO 15 is inverted WRT GPIO 14 so you can connect a high impedance a speaker directly across these two IO pins, a piezo speaker is ideal. A much better sound quality (and a much louder sound) can be heard using a low pass filter and an amplifier. Amplified external PC speakers work well.
 
 ## Beep
 
