@@ -14,7 +14,6 @@
  *	relevant peripherals. I'll align it properly with the real thing as more
  *	info appears.
  *
- *	TODO: implement quiet for the mem_read methods
  */
 
 #include <stdio.h>
@@ -24,6 +23,7 @@
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
+#include "pico/multicore.h"
 
 //iniparcer
 #include "dictionary.h"
@@ -63,6 +63,34 @@
 //2 pages of RAM/ROM for PICO
 #define USERAM 1
 #define USEROM 0
+
+//spo256al2
+//pico SDK includes
+#include "hardware/pwm.h"
+
+//program includes
+#include "allophones.c"
+#include "allophoneDefs.h"
+
+//must be pins on the same slice
+#define soundIO1 15
+#define soundIO2 14
+
+#define PWMrate 90
+
+uint PWMslice;
+uint8_t SPO256Port;
+uint8_t SPO256DataOut;
+uint8_t SPO256DataReady=0;
+
+//Beep
+
+#include "midiNotes.h"
+uint8_t BeepPort;
+uint8_t BeepDataOut;
+uint8_t BeepDataReady=0;
+
+
 
 
 
@@ -128,17 +156,6 @@ static int charoutUSB=0;
 int PIOA=0;
 
 uint8_t PIOAp[]={16,17,18,19,20,21,26,27};
-
-//pre PCB Circuit diag setup
-//PIOAp[0]=16;
-//PIOAp[1]=17;
-//PIOAp[2]=18;
-//PIOAp[3]=19;
-//PIOAp[4]=20;
-//PIOAp[5]=21;
-//PIOAp[6]=26;
-//PIOAp[7]=27;
-
 
 //PICO GPIO
 // use regular LED
@@ -1243,6 +1260,8 @@ static uint8_t io_read_2014(uint16_t addr)
 	if (addr >= 0xA0 && addr <= 0xA7 && have_16x50)
 		return uart_read(&uart[0], addr & 7);
 	else if (addr==PIOA) return PIOA_read();	
+	else if (addr==SPO256Port) return SPO256DataReady;
+	else if (addr==BeepPort) return BeepDataReady;
 
 	if (trace & TRACE_UNK)
 		printf( "Unknown read from port %04X\n", addr);
@@ -1275,6 +1294,8 @@ static void io_write_2014(uint16_t addr, uint8_t val, uint8_t known)
 	else if (switchrom && (addr & 0x7F) >= 0x38 && (addr & 0x7F) <= 0x3F)
 		toggle_rom();
 	else if (addr==PIOA)PIOA_write(val);	
+	else if (addr==SPO256Port){SPO256DataOut=val;SPO256DataReady=1;}
+	else if (addr==BeepPort){BeepDataOut=val;BeepDataReady=1;}
 	else if (addr == 0xFD) {
 		trace &= 0xFF00;
 		trace |= val;
@@ -1680,6 +1701,118 @@ int SDFileExists(char * filename){
 }
 
 
+//############################################################################################################
+//################################################# Sound ####################################################
+//############################################################################################################
+
+void PlayAllophone(int al){
+    int b,s;
+    uint8_t v;
+    //reset pwm settings (play notes may change them)
+    pwm_set_clkdiv(PWMslice,16);
+    pwm_set_wrap (PWMslice, 256);
+    
+    //get length of allophone sound bite
+    s=allophonesizeCorrected[al];
+    //and play
+    for(b=0;b<s;b++){
+        v=allophoneindex[al][b]; //get delta value
+        sleep_us(PWMrate);
+        pwm_set_both_levels(PWMslice,v,~v);
+
+    }
+
+}
+
+void PlayAllophones(uint8_t *alist,int listlength){
+   int a;
+   for(a=0;a<listlength;a++){
+     PlayAllophone(alist[a]);
+   }
+}
+
+void SetPWM(void){
+    gpio_init(soundIO1);
+    gpio_set_dir(soundIO1,GPIO_OUT);
+    gpio_set_function(soundIO1, GPIO_FUNC_PWM);
+
+    gpio_init(soundIO2);
+    gpio_set_dir(soundIO2,GPIO_OUT);
+    gpio_set_function(soundIO2, GPIO_FUNC_PWM);
+
+    PWMslice=pwm_gpio_to_slice_num (soundIO1);
+    pwm_set_clkdiv(PWMslice,16);
+    pwm_set_both_levels(PWMslice,0x80,0x80);
+
+    pwm_set_output_polarity(PWMslice,true,false);
+
+    pwm_set_wrap (PWMslice, 256);
+    pwm_set_enabled(PWMslice,true);
+
+}
+
+void Beep(uint8_t note){
+    int w;     
+    //set frequency    
+    pwm_set_clkdiv(PWMslice,256);
+    if (note>0 && note<128){
+      //get divisor from Midi note table.
+      w=MidiNoteWrap[note];  
+      pwm_set_both_levels(PWMslice,w>>1,w>>1);
+      //set frequency from midi note table.
+      pwm_set_wrap(PWMslice,w);
+    }else{
+      pwm_set_both_levels(PWMslice,0x0,0x0);  
+    }
+}
+
+
+
+
+
+
+
+
+//############################################################################################################
+//################################################# Core 1 ####################################################
+//############################################################################################################
+
+void Core2Main(void){
+  SetPWM();
+  printf("\n#Core 1 Starting#\n");
+
+  //RC2040
+  uint8_t alist[] ={AR1,PA3,SS1,SS1,IY1,PA3,TT2,WH1,EH1,EH1,NN1,PA2,PA3,TT2,IY1,PA5,FF1,OR1,PA3,TT2,IY1,PA5};
+  PlayAllophones(alist,sizeof(alist));
+  
+  while(1){
+    if(SPO256DataReady>0){
+      PlayAllophone(SPO256DataOut);
+      SPO256DataReady=0;
+    }  
+    if(BeepDataReady>0){
+      Beep(BeepDataOut);
+      BeepDataReady=0;
+    }  
+    sleep_ms(1);
+    tight_loop_contents();
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1695,6 +1828,7 @@ int SDFileExists(char * filename){
 int main(int argc, char *argv[])
 {
 	static struct timespec tc;
+		
 	int opt;
 	int fd;
 	int romen = 1;
@@ -1713,7 +1847,8 @@ int main(int argc, char *argv[])
 	int SerialType =0; //ACIA=0 SIO=1
 
         char RomTitle[200];
-//over clock
+        
+//over clock done in ini parcer now
         set_sys_clock_khz(250000, true);
 
 
@@ -1780,7 +1915,8 @@ int main(int argc, char *argv[])
 	if (SDFileExists(ini_name)){
 	  sprintf(temp,"Ini file %s Exists Loading ... \n\r",ini_name);
 	  PrintToSelected(temp,1);
-		
+
+//########################################### INI Parser ######################################		
 	  ini = iniparser_load(fr, ini_name);
 	  //iniparser_dump(ini, stdout);
 
@@ -1826,10 +1962,12 @@ int main(int argc, char *argv[])
 	  // PORT
 	  PIOA=iniparser_getint(ini, "[PORT]:pioa",0 );
 
+	  SPO256Port=iniparser_getint(ini, "[PORT]:spo256",0x30 );
+	  BeepPort=iniparser_getint(ini, "[PORT]:beep",0x31 );
+
           // Overclock
 	  overclock=iniparser_getint(ini, "SPEED:overclock",0 );
 	  if (overclock>0){
-
 	        sprintf(temp,"Overclock to %i000\n\r",overclock,1);
 	        PrintToSelected(temp,1);
 	  	set_sys_clock_khz(overclock*1000, true);
@@ -1838,6 +1976,8 @@ int main(int argc, char *argv[])
 	  //iniparser_freedict(ini); // cant free, settings are pointed to dictionary.
 
 	  PrintToSelected("Loaded INI\n\r",1);	
+
+//########################################### End of INI Parser ###########################
 
 
 //IF switches link present, get switches and select rom bank and UART from switches
@@ -1860,23 +2000,13 @@ int main(int argc, char *argv[])
 //init PIO
         if(PIOA<256) PIOA_init();
 
+
+
+
+
 //init Emulation
         cpuboard=0;  //remove shouldnt be needed any more
 
-	// IDE ACIA
-	// ./rc2014  -r 24886009.BIN -i CPMIncTransient.cf  -p -s -e 4 -f
-	//CPM
-	//rc2014 -a -p -r R0001000.BIN  -i CPMIncTransient.cf  -e 4 -f
-	//BASIC 32k
-	//rc2014 -a -p -r R0001000.BIN  -i CPMIncTransient.cf  -e 0 -f
-	/*
-	 	Monitor two possibilities
-		rc2014 -a   -r /home/Bins/RC2014/24886009.BIN  -e 2 -i /home/Bins/CF/CPMIncTransient.cf  -f -p
-		./rc2014 -a   -r /home/Bins/RC2014/24886009.BIN  -e 7 -i /home/Bins/CF/CPMIncTransient.cf  -f -p
-	*/
-	    
-	//rom -r 
-	  
 	//Fast -f // probably doesnt mean anything anymore no nano delay.
 	fast = 1;
 
@@ -1917,9 +2047,6 @@ int main(int argc, char *argv[])
           PrintToSelected(RomTitle,1);
           sprintf(RomTitle,"CPM/IDE File:'%s %s' \n\r",idepath,idepathi);
         }
-
-
-//        sprintf(RomTitle,"Loading: '%s'[rombank:%i] - CPM CF File:'%s' \n\r",romfile,rombank,idepath);
         PrintToSelected(RomTitle,1);
 
         have_ctc = 0;
@@ -1931,7 +2058,6 @@ int main(int argc, char *argv[])
 		FIL fild;
 		ide0 = ide_allocate("cf");
 		if (ide0) {
-			//printf("IDE open %s \n",idepath);
 			if (iscf==0){
                           FRESULT ide_fri=f_open(&fili, idepathi, FA_READ | FA_WRITE);
                           if (ide_fri != FR_OK) {
@@ -1947,7 +2073,6 @@ int main(int argc, char *argv[])
 				ide = 0;
 				if (trace & TRACE_IDE) printf( "IDE0 Data Open fail");
 			}
-//			if (ide_attach(ide0, 0, fil) == 0) {
 			if (ide_attach(ide0, 0, fili,fild,iscf) == 0) {
 				ide = 1;
 				ide_reset_begin(ide0);
@@ -1981,6 +2106,10 @@ int main(int argc, char *argv[])
 		printf( "Invalid input device %d.\n", indev);
 	}
 
+//Start Core2
+        multicore_launch_core1(Core2Main);
+
+
 	tc.tv_sec = 0;
 	tc.tv_nsec = 20000000L;
 
@@ -1999,9 +2128,9 @@ int main(int argc, char *argv[])
 	cpu_z80.memWrite = mem_write;
 	cpu_z80.trace = z80_trace;
 
-	PrintToSelected("\r\n ##################################\n\r",0);
-	PrintToSelected(" ######## RC2040 STARTING #########\n\r",0);
-	PrintToSelected(" ##################################\n\n\r",0);
+	PrintToSelected("\r\n #####################################\n\r",0);
+	PrintToSelected(" ########## RC2040 STARTING ##########\n\r",0);
+	PrintToSelected(" #####################################\n\n\r",0);
 
 	/* This is the wrong way to do it but it's easier for the moment. We
 	   should track how much real time has occurred and try to keep cycle
