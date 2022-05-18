@@ -1718,7 +1718,7 @@ void PlayAllophone(int al){
     for(b=0;b<s;b++){
         v=allophoneindex[al][b]; //get delta value
         sleep_us(PWMrate);
-        pwm_set_both_levels(PWMslice,v,~v);
+        pwm_set_both_levels(PWMslice,v,v);
 
     }
 
