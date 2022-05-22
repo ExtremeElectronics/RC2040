@@ -67,7 +67,6 @@ SD card images (a "get you started" is available in the [SD Card Contents] sub f
 ### Real hardware Boards
 
 - RC2014 - RFC2795 Ltd: https://z80kits.com
-- Small Computer Central: https://www.tindie.com/stores/tindiescx/
 - Etched Pixels: https://hackaday.io/projects/hacker/425483
 - TMS9918A card: https://www.tindie.com/stores/mfkamprath/
 
