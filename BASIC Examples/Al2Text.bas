@@ -7,5 +7,5 @@
 70 WEND
 80 GOTO 10
 90 END
-1000 REM paste output from the page here.
+1000 REM paste DATA output from the page here.
 5000 DATA 255
