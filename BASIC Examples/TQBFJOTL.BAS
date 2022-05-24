@@ -1,10 +1,14 @@
-5 REM Speak The quick brown fox... using allophones
-10 FOR A=1 TO 38
+10 REM Speak The quick brown fox... using allophones
 20 READ X
-30 OUT 48,X
-40 WHILE(INP(48)>0)
-50 WEND
-60 NEXT A
-100 data 42, 31, 12, 42, 2, 28, 14, 32, 11, 2, 40, 40, 53, 41, 55
-110 data 2, 10, 15, 16, 9, 55, 2, 53, 35, 51, 4, 29, 27
-120 data 7, 2, 45, 20, 43, 19, 2, 33, 23, 34
+30 IF X=255 THEN GOTO 80
+40 OUT 48,X
+50 WHILE(INP(48)>0)
+60 WEND
+70 GOTO 20
+80 END
+1010 REM "The quick brown fox jumps over the lazy dog"
+1020 DATA 19,3,2,8,46,12,41,3,2,28,39,32,11,3,2,40,23
+1030 DATA 42,55,3,2,10,15,16,9,55,3,2,53,35,52,3,2,18
+1040 DATA 19,3,2,45,20,54,43,19,3,2,33,23,34,3,2
+2000 REM End of Data
+2010 DATA 255
