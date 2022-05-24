@@ -2,7 +2,6 @@
 15 REM Converter at http://extkits.co.uk/spo256-al2
 20 READ X
 30 IF X = &HFF THEN GOTO 90
-40 IF X = &HFE THEN READ MSG$:PRINT MSG$:GOTO 20
 50 OUT 48,X
 60 WHILE(INP(48)>0)
 70 WEND
