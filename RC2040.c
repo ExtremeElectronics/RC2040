@@ -1779,7 +1779,7 @@ void Beep(uint8_t note){
 
 void Core2Main(void){
   SetPWM();
-  printf("\n#Core 1 Starting#\n");
+//  printf("\n#Core 1 Starting#\n");
 
   //RC2040
   uint8_t alist[] ={AR1,PA3,SS1,SS1,IY1,PA3,TT2,WH1,EH1,EH1,NN1,PA2,PA3,TT2,IY1,PA5,FF1,OR1,PA3,TT2,IY1,PA5};
@@ -1883,19 +1883,6 @@ int main(int argc, char *argv[])
 
         PrintToSelected("SD INIT OK \n\r",1);
 
-//banner
-
-        sprintf(RomTitle, "\n\n\r     ________________________________");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r    /                                |");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r   /          PICO RC2040            |");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r  /                                  |");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r |  O                                |");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r |          Derek Woodroffe          |");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r |               2022                |");PrintToSelected(RomTitle,1);
-        //sprintf(RomTitle,   "\n\r |                                   |");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r |___________________________________|");PrintToSelected(RomTitle,1);
-        sprintf(RomTitle,   "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,1);
-
 
 
 
@@ -1990,15 +1977,30 @@ int main(int argc, char *argv[])
 
         flash_led(200);
         if (UseUsb){
-        PrintToSelected("\rWaiting for USB to connect\n\r",1);
+          PrintToSelected("\rWaiting for USB to connect\n\r",1);
           //if usb wait for usb to connect.
           while (!tud_cdc_connected()) { sleep_ms(100);  }
         }
 
-// "command line" settings"
+        
+
+// Decided on serial port so from here on Print only to that post
 
 //init PIO
         if(PIOA<256) PIOA_init();
+
+
+//banner
+	sprintf(RomTitle, "\n\n\n");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r     ________________________________");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r    /                                |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r   /          PICO RC2040            |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r  /         Derek Woodroffe          |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r |  O        Extreme Kits            |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r |     Kits at extkits.uk/RC2040     |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r |               2022                |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r |___________________________________|");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,0);
 
 
 
@@ -2108,8 +2110,8 @@ int main(int argc, char *argv[])
 
 //Start Core2
         multicore_launch_core1(Core2Main);
-
-
+        printf("\n#Core 1 Started#\n\n");
+//Init Z80
 	tc.tv_sec = 0;
 	tc.tv_nsec = 20000000L;
 
@@ -2127,6 +2129,9 @@ int main(int argc, char *argv[])
 	cpu_z80.memRead = mem_read;
 	cpu_z80.memWrite = mem_write;
 	cpu_z80.trace = z80_trace;
+
+	
+
 
 	PrintToSelected("\r\n #####################################\n\r",0);
 	PrintToSelected(" ########## RC2040 STARTING ##########\n\r",0);
