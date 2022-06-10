@@ -1,12 +1,12 @@
-## GPIO pin definitions 
-# and where to change them 
+# GPIO pin definitions 
+### and where to change them 
 
 The RC2040 was never intended to be board agnostic, but people have asked so....
 
-# Where the GPIO pins are defined. 
+## Where the GPIO pins are defined. 
 Yes this should all be in one place....
 
-# SD Card
+## SD Card
 the pins are defined in
 void spi0_dma_isr();
 
@@ -25,19 +25,19 @@ static sd_card_t sd_cards[]
 
 
 
-# Sound
+## Sound
 The speaker pins, have two defines near the top of RC2040.c 
 #define soundIO1 15
 #define soundIO2 14
 
 These must be on the same PWMslice
 
-# 8 bit Port
+## 8 bit Port
 The pins for the 8 bit port are defined in an array near the top of RC2040.c
 
 uint8_t PIOAp[]={16,17,18,19,20,21,26,27};
 
-# Serial
+## Serial
 near the top of the RC2040.c
 /* Real UART setup*/
 
