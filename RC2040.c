@@ -60,6 +60,14 @@
 #include "z80dma.h"
 #include "z80dis.h"
 
+//ide file handles
+FIL fili;
+FIL fild;
+
+//serial file transfer
+#include "serialfile.c"
+
+
 //2 pages of RAM/ROM for PICO
 #define USERAM 1
 #define USEROM 0
@@ -161,16 +169,6 @@ uint8_t PIOAp[]={16,17,18,19,20,21,26,27};
 // use regular LED
 const uint LEDPIN = PICO_DEFAULT_LED_PIN;
 
-/*
-//ROM Address Switches before PCB layout
-const uint ROMA13 = 18;
-const uint ROMA14 = 19;
-const uint ROMA15 = 20;
-
-//
-const uint SELSEL = 21;
-*/
-
 const uint HASSwitchesIO =22;
 //
 int HasSwitches=0;
@@ -181,12 +179,16 @@ const uint ROMA13 = 10;
 const uint ROMA14 = 11;
 const uint ROMA15 = 12;
 
-const uint SELSEL = 13;
-
+//serial selection
+const uint SERSEL = 13;
 
 //buttons
 const uint DUMPBUT =9;
+const uint AUXBUT =8;
 const uint RESETBUT =7;
+
+//LED
+const uint PCBLED =6;
 
 
 /* use stdio for errors via usb uart */
@@ -1572,7 +1574,7 @@ void DumpMemory(int FromAddr, int dumpsize,FRESULT fr){
 
 }
 
-int ls(const char *dir,const char * search) {
+int sdls(const char *dir,const char * search) {
     int filecnt=0;
     char cwdbuf[FF_LFN_BUF] = {0};
     FRESULT fr; /* Return value */
@@ -1644,9 +1646,9 @@ int GetRomSwitches(){
   gpio_pull_up(ROMA15);
 
 //serial port selection swithch
-  gpio_init(SELSEL);
-  gpio_set_dir(SELSEL,GPIO_IN);
-  gpio_pull_up(SELSEL);
+  gpio_init(SERSEL);
+  gpio_set_dir(SERSEL,GPIO_IN);
+  gpio_pull_up(SERSEL);
 
   sleep_ms(1); //wait for io to settle.
 
@@ -1663,7 +1665,7 @@ int GetRomSwitches(){
     if (gpio_get(ROMA15))rombank+=4;
     PrintToSelected("\r\nOverriding INI from ROM/port Switches  \n\r",1);
 
-    if (gpio_get(SELSEL)==1){
+    if (gpio_get(SERSEL)==1){
         UseUsb=1;
         PrintToSelected("Console Via USB  \n\r",1);
     }else{
@@ -1672,7 +1674,7 @@ int GetRomSwitches(){
     }
 
 
-//if has switches, then has buttons too.
+//if has switches, then it has buttons and an LED too.
 
 //setup DUMP gpio
     gpio_init(DUMPBUT);
@@ -1683,6 +1685,17 @@ int GetRomSwitches(){
     gpio_init(RESETBUT);
     gpio_set_dir(RESETBUT,GPIO_IN);
     gpio_pull_up(RESETBUT);
+
+//setup AUXBUT gpio
+    gpio_init(AUXBUT);
+    gpio_set_dir(AUXBUT,GPIO_IN);
+    gpio_pull_up(AUXBUT);
+
+//setup PCBLED
+    gpio_init(PCBLED);
+    gpio_set_dir(PCBLED,GPIO_OUT);
+
+
 
 
 
@@ -2056,8 +2069,6 @@ int main(int argc, char *argv[])
 	tstate_steps = 500;
 
   	if (ide == 1 ) {
-		FIL fili;
-		FIL fild;
 		ide0 = ide_allocate("cf");
 		if (ide0) {
 			if (iscf==0){
@@ -2161,6 +2172,17 @@ int main(int argc, char *argv[])
                         Z80RESET(&cpu_z80);
                         while(gpio_get(RESETBUT)==0);
                     }
+                    
+                    if(gpio_get(AUXBUT)==0){
+                       
+                       while(gpio_get(AUXBUT)==0);
+                       sleep_ms(100);
+                       gpio_put(PCBLED,1);
+                       serialfile();
+                       gpio_put(PCBLED,0);
+                    
+                    }
+                    
                 }
 
 		for (i = 0; i < 40; i++) {  //origional

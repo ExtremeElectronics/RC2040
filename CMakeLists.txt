@@ -19,6 +19,10 @@
         hw_config.c
         dictionary.c
 	iniparser.c
+#cpm tools
+        cpmfs.c
+        device_sdfs.c
+
   )
 
   pico_sdk_init()
