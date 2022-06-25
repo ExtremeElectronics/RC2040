@@ -1,0 +1,221 @@
+# offset calculation for RC2040 CPMIncTransient.img file without 1024 bytes
+# (1k) header 
+# created by Guido Lehwalder - 15th April 2022
+# if header 1024 bytes = would compares to 2 x seclen/sectors of 512 bytes
+# offset from one partition to another = 512 tracks = x32 sectors = 16384
+# sectors  
+# offset for drivename a: - p: = ( partno (a:0-p:15) x (512 tracks x 32
+# sectrk)
+
+# rc2040imga
+diskdef rc2040imga
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+# rc2040imga = BOOT
+  boottrk 1
+  # Offset of the rc2040imga partition
+  # rc2040imga ( 0 x( 512 x 32 ) =  0
+  # offset 0sec
+  os 2.2
+end
+
+# rc2040imgb
+diskdef rc2040imgb
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+# rc2040imgb = NOBOOT
+  boottrk 0
+  # Offset of the rc2040imgb partition
+  # rc2040imgb ( 1 x( 512 x 32 ) =  16384 
+  offset 16384sec
+  os 2.2
+end
+
+diskdef rc2040imgc
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgc partition
+  # rc2040imgc ( 2 x( 512 x 32 ) =  32768 
+  offset 32768sec
+  os 2.2
+end
+
+diskdef rc2040imgd
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgd partition
+  # rc2040imgd ( 3 x( 512 x 32 ) =  49152 
+  offset 49152sec
+  os 2.2
+end
+
+diskdef rc2040imge
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imge partition
+  # rc2040imge ( 4 x( 512 x 32 ) =  65536 
+  offset 65536sec
+  os 2.2
+end
+
+diskdef rc2040imgf
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgf partition
+  # rc2040imgf ( 5 x( 512 x 32 ) =  81920 
+  offset 81920sec
+  os 2.2
+end
+
+diskdef rc2040imgg
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgg partition
+  # rc2040imgg ( 6 x( 512 x 32 ) =  98304 
+  offset 98304sec
+  os 2.2
+end
+
+diskdef rc2040imgh
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgh partition
+  # rc2040imgh ( 7 x( 512 x 32 ) =  114688 
+  offset 114688sec
+  os 2.2
+end
+
+diskdef rc2040imgi
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgi partition
+  # rc2040imgi ( 8 x( 512 x 32 ) =  131072 
+  offset 131072sec
+  os 2.2
+end
+
+diskdef rc2040imgj
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgj partition
+  # rc2040imgj ( 9 x( 512 x 32 ) =  147456 
+  offset 147456sec
+  os 2.2
+end
+
+diskdef rc2040imgk
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgk partition
+  # rc2040imgk ( 10 x( 512 x 32 ) =  163840 
+  offset 163840sec
+  os 2.2
+end
+
+diskdef rc2040imgl
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgl partition
+  # rc2040imgl ( 11 x( 512 x 32 ) =  180224 
+  offset 180224sec
+  os 2.2
+end
+
+diskdef rc2040imgm
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgm partition
+  # rc2040imgm ( 12 x( 512 x 32 ) =  196608 
+  offset 196608sec
+  os 2.2
+end
+
+diskdef rc2040imgn
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgn partition
+  # rc2040imgn ( 13 x( 512 x 32 ) =  212992 
+  offset 212992sec
+  os 2.2
+end
+
+diskdef rc2040imgo
+  seclen 512
+  tracks 512
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgo partition
+  # rc2040imgo ( 14 x( 512 x 32 ) =  229376 
+  offset 229376sec
+  os 2.2
+end
+
+diskdef rc2040imgp
+  seclen 512
+  tracks 128
+  sectrk 32
+  blocksize 4096
+  maxdir 512
+  boottrk 0
+  # Offset of the rc2040imgp partition
+  # rc2040imgp ( 15 x( 512 x 32 ) =  245760 
+  offset 245760sec
+  os 2.2
+end
+
