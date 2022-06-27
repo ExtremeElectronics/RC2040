@@ -343,7 +343,7 @@ static int allocBlock(const struct cpmSuperBlock *drive)
 
 /* logical block I/O */
 /* readBlock          -- read a (partial) block                  */ /*{{{*/
-static int readBlock(const struct cpmSuperBlock *d, int blockno, char *buffer, int start, int end)
+static int readBlock(struct cpmSuperBlock *d, int blockno, char *buffer, int start, int end)
 {
   int sect, track, counter;
 
@@ -390,7 +390,7 @@ static int readBlock(const struct cpmSuperBlock *d, int blockno, char *buffer, i
 }
 /*}}}*/
 /* writeBlock         -- write a (partial) block                 */ /*{{{*/
-static int writeBlock(const struct cpmSuperBlock *d, int blockno, const char *buffer, int start, int end)
+static int writeBlock(struct cpmSuperBlock *d, int blockno, const char *buffer, int start, int end)
 {
   int sect, track, counter;
 
@@ -1195,7 +1195,7 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
 }
 /*}}}*/
 /* syncDs             -- write all datestamper timestamps        */ /*{{{*/
-static int syncDs(const struct cpmSuperBlock *sb)
+static int syncDs(struct cpmSuperBlock *sb)
 {
   if (sb->dirtyDs)
   {
