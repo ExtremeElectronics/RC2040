@@ -18,3 +18,8 @@ To return back to the emulation. Run the EXIT-RC20xx.py program.
 
 CPM doesn't know files have been dumped into a dirive externally, so you may have to move into a different drive and back again if you are in the drive you ae dumping files to, to see the changes. 
 
+## Speed
+
+CopyTo and CopyFrom give an idea of transfer speed, around 15Kb/s (0.16 Z/s)* should be doable for CopyTo and 52Kb/s (0.53 Z/s)* for CopyFrom
+
+*Zorks a second, where 1 ZORK=96K
