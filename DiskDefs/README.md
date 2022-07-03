@@ -6,3 +6,8 @@ Thanks to https://github.com/guidol70 for calculating / debugging these
 
 Originally from the RC2014 the post in the RC2014-Z80 Google-Group:
 https://groups.google.com/g/rc2014-z80/c/VD22SEht0PY/m/XRkbXofeAAAJ
+
+# Warning #
+The diskdefs file must have lines terminated in LF ONLY, don't copy/paste the file into an editor then save, it may change them to CRLF's
+
+Download and Save as RAW 
