@@ -11,3 +11,5 @@ Mario.BAS Uses Beep port to play music
 RC2040.BAS Uses SPO256-al2 allophones to say "RC2040"
 
 TQBFJOTL.BAS Uses SPO256-al2 allophones to say "The Quick Brown Fox"
+
+neotest.bas chases 32 neopixels from gpio 28
