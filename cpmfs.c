@@ -1,4 +1,4 @@
-/* #includes */ /*{{{C}}}*//*{{{*/
+/* #includes */
 #include "config.h"
 
 #include <sys/stat.h>
@@ -22,8 +22,8 @@
 #ifdef USE_DMALLOC
 #include <dmalloc.h>
 #endif
-/*}}}*/
-/* #defines */ /*{{{*/
+
+/* #defines */ 
 #undef CPMFS_DEBUG
 
 //#define CPMFS_DEBUG 1
@@ -52,14 +52,13 @@ maxdir+2 the optional disk label. */
 #define RESERVED_INODES 3
 
 #define PASSWD_RECLEN 24
-/*}}}*/
 
 extern char **environ;
 const char *boo;
 static mode_t s_ifdir=1;
 static mode_t s_ifreg=1;
 
-/* memcpy7            -- Copy string, leaving 8th bit alone      */ /*{{{*/
+/* memcpy7            -- Copy string, leaving 8th bit alone   */
 static void memcpy7(char *dest, const char *src, int count)
 {
   while (count--)
@@ -69,10 +68,9 @@ static void memcpy7(char *dest, const char *src, int count)
     ++src;
   }
 }
-/*}}}*/
 
 /* file name conversions */ 
-/* splitFilename      -- split file name into name and extension */ /*{{{*/
+/* splitFilename      -- split file name into name and extension */
 static int splitFilename(const char *fullname, int type, char *name, char *ext, int *user) 
 {
   int i,j;
@@ -118,8 +116,7 @@ static int splitFilename(const char *fullname, int type, char *name, char *ext, 
   }
   return 0;
 }
-/*}}}*/
-/* isMatching         -- do two file names match?                */ /*{{{*/
+/* isMatching         -- do two file names match?    */
 static int isMatching(int user1, const char *name1, const char *ext1, int user2, const char *name2, const char *ext2)
 {
   int i;
@@ -133,10 +130,9 @@ static int isMatching(int user1, const char *name1, const char *ext1, int user2,
   for (i=0; i<3; ++i) if ((ext1[i]&0x7f)!=(ext2[i]&0x7f)) return 0;
   return 1;
 }
-/*}}}*/
 
 /* time conversions */
-/* cpm2unix_time      -- convert CP/M time to UTC                */ /*{{{*/
+/* cpm2unix_time      -- convert CP/M time to UTC                */ 
 static time_t cpm2unix_time(int days, int hour, int min)
 {
   /* CP/M stores timestamps in local time.  We don't know which     */
@@ -192,7 +188,7 @@ static time_t cpm2unix_time(int days, int hour, int min)
   t-=lt;
   return t;
 }
-/*}}}*/
+
 /* unix2cpm_time      -- convert UTC to CP/M time                */ /*{{{*/
 static void unix2cpm_time(time_t now, int *days, int *hour, int *min) 
 {
@@ -235,7 +231,7 @@ static time_t ds2unix_time(const struct dsEntry *entry)
   
   return mktime(&tms);
 }
-/*}}}*/
+
 /* unix2ds_time       -- convert Unix to DS time                 */ /*{{{*/
 static void unix2ds_time(time_t now, struct dsEntry *entry) 
 {
@@ -306,10 +302,10 @@ static void alvInit(const struct cpmSuperBlock *d)
       }
     }
   }
-  /*}}}*/
 }
-/*}}}*/
-/* allocBlock         -- allocate a new disk block               */ /*{{{*/
+
+
+/* allocBlock         -- allocate a new disk block               */ 
 static int allocBlock(const struct cpmSuperBlock *drive)
 {
   int i,j,bits,block;
@@ -339,10 +335,9 @@ static int allocBlock(const struct cpmSuperBlock *drive)
   boo="device full";
   return -1;
 }
-/*}}}*/
 
 /* logical block I/O */
-/* readBlock          -- read a (partial) block                  */ /*{{{*/
+/* readBlock          -- read a (partial) block                  */ 
 static int readBlock(struct cpmSuperBlock *d, int blockno, char *buffer, int start, int end)
 {
   int sect, track, counter;
@@ -388,8 +383,9 @@ static int readBlock(struct cpmSuperBlock *d, int blockno, char *buffer, int sta
   }
   return 0;
 }
-/*}}}*/
-/* writeBlock         -- write a (partial) block                 */ /*{{{*/
+
+
+/* writeBlock         -- write a (partial) block                 */ 
 static int writeBlock(struct cpmSuperBlock *d, int blockno, const char *buffer, int start, int end)
 {
   int sect, track, counter;
@@ -422,10 +418,10 @@ static int writeBlock(struct cpmSuperBlock *d, int blockno, const char *buffer, 
   }
   return 0;
 }
-/*}}}*/
+
 
 /* directory management */
-/* findFileExtent     -- find first/next extent for a file       */ /*{{{*/
+/* findFileExtent     -- find first/next extent for a file       */ 
 static int findFileExtent(const struct cpmSuperBlock *sb, int user, const char *name, const char *ext, int start, int extno)
 {
   boo="file already exists";
@@ -441,8 +437,8 @@ static int findFileExtent(const struct cpmSuperBlock *sb, int user, const char *
   boo="file not found";
   return -1;
 }
-/*}}}*/
-/* findFreeExtent     -- find first free extent                  */ /*{{{*/
+
+/* findFreeExtent     -- find first free extent                  */ 
 static int findFreeExtent(const struct cpmSuperBlock *drive)
 {
   int i;
@@ -451,8 +447,8 @@ static int findFreeExtent(const struct cpmSuperBlock *drive)
   boo="directory full";
   return -1;
 }
-/*}}}*/
-/* updateTimeStamps   -- convert time stamps to CP/M format      */ /*{{{*/
+
+/* updateTimeStamps   -- convert time stamps to CP/M format      */ 
 static void updateTimeStamps(const struct cpmInode *ino, int extent)
 {
   struct PhysDirectoryEntry *date;
@@ -469,7 +465,7 @@ static void updateTimeStamps(const struct cpmInode *ino, int extent)
     ino->sb->dirtyDirectory=1;
     switch (extent&3)
     {
-      case 0: /* first entry */ /*{{{*/
+      case 0: /* first entry */ 
       {
         date->name[0]=ca_days&0xff; date->name[1]=ca_days>>8;
         date->name[2]=ca_hour;
@@ -480,7 +476,7 @@ static void updateTimeStamps(const struct cpmInode *ino, int extent)
         break;
       }
       /*}}}*/
-      case 1: /* second entry */ /*{{{*/
+      case 1: /* second entry */ 
       {
         date->ext[2]=ca_days&0xff; date->extnol=ca_days>>8;
         date->lrc=ca_hour;
@@ -491,7 +487,7 @@ static void updateTimeStamps(const struct cpmInode *ino, int extent)
         break;
       }
       /*}}}*/
-      case 2: /* third entry */ /*{{{*/
+      case 2: /* third entry */ 
       {
         date->pointers[5]=ca_days&0xff; date->pointers[6]=ca_days>>8;
         date->pointers[7]=ca_hour;
@@ -501,12 +497,13 @@ static void updateTimeStamps(const struct cpmInode *ino, int extent)
         date->pointers[12]=u_min;
         break;
       }
-      /*}}}*/
+      
     }
   }
 }
-/*}}}*/
-/* updateDsStamps     -- set time in datestamper file            */ /*{{{*/
+
+
+/* updateDsStamps     -- set time in datestamper file            */ 
 static void updateDsStamps(const struct cpmInode *ino, int extent)
 {
   struct dsDate *stamp;
@@ -527,22 +524,22 @@ static void updateDsStamps(const struct cpmInode *ino, int extent)
 
   ino->sb->dirtyDs = 1;
 }
-/*}}}*/
-/* readTimeStamps     -- read CP/M time stamp                    */ /*{{{*/
+
+
+/* readTimeStamps     -- read CP/M time stamp                    */ 
 static int readTimeStamps(struct cpmInode *i, int lowestExt) 
 {
-  /* variables */ /*{{{*/
+  /* variables */ 
   struct PhysDirectoryEntry *date;
   int u_days=0,u_hour=0,u_min=0;
   int ca_days=0,ca_hour=0,ca_min=0;
   int protectMode=0;
-  /*}}}*/
   
   if ( (i->sb->type&CPMFS_CPM3_DATES) && (date=i->sb->dir+(lowestExt|3))->status==0x21 )
   {
     switch (lowestExt&3)
     {
-      case 0: /* first entry of the four */ /*{{{*/
+      case 0: /* first entry of the four */ 
       {
         ca_days=((unsigned char)date->name[0])+(((unsigned char)date->name[1])<<8);
         ca_hour=(unsigned char)date->name[2];
@@ -553,8 +550,7 @@ static int readTimeStamps(struct cpmInode *i, int lowestExt)
         protectMode=(unsigned char)date->ext[0];
         break;
       }
-      /*}}}*/
-      case 1: /* second entry */ /*{{{*/
+      case 1: /* second entry */ 
       {
         ca_days=((unsigned char)date->ext[2])+(((unsigned char)date->extnol)<<8);
         ca_hour=(unsigned char)date->lrc;
@@ -565,8 +561,7 @@ static int readTimeStamps(struct cpmInode *i, int lowestExt)
         protectMode=(unsigned char)date->pointers[3];
         break;
       }
-      /*}}}*/
-      case 2: /* third one */ /*{{{*/
+      case 2: /* third one */ 
       {
         ca_days=((unsigned char)date->pointers[5])+(((unsigned char)date->pointers[6])<<8);
         ca_hour=(unsigned char)date->pointers[7];
@@ -577,7 +572,6 @@ static int readTimeStamps(struct cpmInode *i, int lowestExt)
         protectMode=(unsigned char)date->pointers[13];
         break;
       }
-      /*}}}*/
     }
     if (i->sb->cnotatime)
     {
@@ -599,8 +593,8 @@ static int readTimeStamps(struct cpmInode *i, int lowestExt)
   
   return protectMode;
 }
-/*}}}*/
-/* readDsStamps       -- read datestamper time stamp             */ /*{{{*/
+
+/* readDsStamps       -- read datestamper time stamp             */ 
 static void readDsStamps(struct cpmInode *i, int lowestExt) 
 {
   struct dsDate *stamp;
@@ -614,9 +608,8 @@ static void readDsStamps(struct cpmInode *i, int lowestExt)
   i->ctime = ds2unix_time(&stamp->create);
   i->atime = ds2unix_time(&stamp->access);
 }
-/*}}}*/
 
-/* match              -- match filename against a pattern        */ /*{{{*/
+/* match              -- match filename against a pattern        */ 
 static int recmatch(const char *a, const char *pattern)
 {
   int first=1;
@@ -662,8 +655,7 @@ int match(const char *a, const char *pattern)
   return recmatch(a,pat);
 }
 
-/*}}}*/
-/* cpmglob            -- expand CP/M style wildcards             */ /*{{{*/
+/* cpmglob            -- expand CP/M style wildcards             */ 
 void cpmglob(int optin, int argc, char * const argv[], struct cpmInode *root, int *gargc, char ***gargv)
 {
   struct cpmFile dir;
@@ -683,14 +675,12 @@ void cpmglob(int optin, int argc, char * const argv[], struct cpmInode *root, in
     if (entries==dirsize) dirent=realloc(dirent,sizeof(struct cpmDirent)*(dirsize*=2));
   }
 
-//  printf("Entries %i \n\r",entries);
   for (i=optin; i<argc; ++i)
   {
     int found;
 
     for (j=0,found=0; j<entries; ++j)
     {
-//      printf("rd:%s\n\r",dirent[j].name);
       if (match(dirent[j].name,argv[i]))
       {
         if (*gargc==gargcap) *gargv=realloc(*gargv,sizeof(char*)*(gargcap ? (gargcap*=2) : (gargcap=16)));
@@ -702,13 +692,25 @@ void cpmglob(int optin, int argc, char * const argv[], struct cpmInode *root, in
   }
   free(dirent);
 }
-/*}}}*/
+
+void RemoveCR(char *src,char *dst){
+    int i=0;
+    int o=0;
+    while(src[i] !=0){
+      dst[o]=src[i];
+      i++;
+      if (dst[o]!='\r')o++;
+    }
+    dst[o]=0;
+}
+
 
 /* superblock management */
-/* diskdefReadSuper   -- read super block from diskdefs file     */ /*{{{*/
+/* diskdefReadSuper   -- read super block from diskdefs file     */ 
 static int diskdefReadSuper(struct cpmSuperBlock *d, const char *format)
 {
   char line[256];
+  char iline[256];
   int ln;
   FIL fp;
   int insideDef=0,found=0;
@@ -721,14 +723,14 @@ static int diskdefReadSuper(struct cpmSuperBlock *d, const char *format)
     exit(1);
   }
   ln=1;
-  while (f_gets(line,sizeof(line),&fp)!=NULL)
+  while (f_gets(iline,sizeof(iline),&fp)!=NULL)
   {
     int argc;
     char *argv[2];
     char *s;
-    
-    //printf("%s",line);
 
+    RemoveCR(iline,line);
+    
     /* Allow inline comments preceded by ; or # */
     s = strchr(line, '#');
     if (s) strcpy(s, "\n");
@@ -921,65 +923,9 @@ static int diskdefReadSuper(struct cpmSuperBlock *d, const char *format)
   }
   return 0;
 }
-/*}}}*/
-/* amsReadSuper       -- read super block from amstrad disk      */ /*{{{*/
-static int amsReadSuper(struct cpmSuperBlock *d, const char *format)
-{
-  unsigned char boot_sector[512], *boot_spec;
-  const char *err;
 
-  Device_setGeometry(&d->dev,512,9,40,0,"pcw180");
-  if ((err=Device_readSector(&d->dev, 0, 0, (char *)boot_sector)))
-  {
-    printf("Failed to read Amstrad superblock (%s)\n",err);
-    exit(1);
-  }
-  boot_spec=(boot_sector[0] == 0 || boot_sector[0] == 3)?boot_sector:(unsigned char*)0;
-  /* Check for JCE's extension to allow Amstrad and MSDOS superblocks
-   * in the same sector (for the PCW16)
-   */
-  if
-  (
-    (boot_sector[0] == 0xE9 || boot_sector[0] == 0xEB)
-    && !memcmp(boot_sector + 0x2B, "CP/M", 4)
-    && !memcmp(boot_sector + 0x33, "DSK",  3)
-    && !memcmp(boot_sector + 0x7C, "CP/M", 4)
-  ) boot_spec = boot_sector + 128;
-  if (boot_spec==(unsigned char*)0)
-  {
-    printf("Amstrad superblock not present\n");
-    exit(1);
-  }
-  /* boot_spec[0] = format number: 0 for SS SD, 3 for DS DD
-              [1] = single/double sided and density flags
-              [2] = cylinders per side
-              [3] = sectors per cylinder
-              [4] = Physical sector shift, 2 => 512
-              [5] = Reserved track count
-              [6] = Block shift
-              [7] = No. of directory blocks
-   */
-  d->type = 0;
-  d->type |= CPMFS_DR3;	/* Amstrads are CP/M 3 systems */
-  d->secLength = 128 << boot_spec[4];
-  d->tracks    = boot_spec[2];
-  if (boot_spec[1] & 3) d->tracks *= 2;
-  d->sectrk    = boot_spec[3];
-  d->blksiz    = 128 << boot_spec[6];
-  d->maxdir    = (d->blksiz / 32) * boot_spec[7];
-  d->skew      = 1; /* Amstrads skew at the controller level */
-  d->skewtab   = (int*)0;
-  d->boottrk   = boot_spec[5];
-  d->offset    = 0;
-  d->size      = (d->secLength*d->sectrk*(d->tracks-d->boottrk))/d->blksiz;
-  d->extents   = ((d->size>=256 ? 8 : 16)*d->blksiz)/16384;
-  d->libdskGeometry[0] = 0; /* LibDsk can recognise an Amstrad superblock 
-                             * and autodect */
- 
-  return 0;
-}
-/*}}}*/
-/* cpmCheckDs         -- read all datestamper timestamps         */ /*{{{*/
+
+/* cpmCheckDs         -- read all datestamper timestamps         */ 
 int cpmCheckDs(struct cpmSuperBlock *sb)
 {
   int dsoffset, dsblks, dsrecs, off, i;
@@ -1024,21 +970,19 @@ int cpmCheckDs(struct cpmSuperBlock *sb)
   }
   return 0;
 }
-/*}}}*/
-/* cpmReadSuper       -- get DPB and init in-core data for drive */ /*{{{*/
+
+/* cpmReadSuper       -- get DPB and init in-core data for drive */ 
 int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *format)
 {
   while (s_ifdir && !S_ISDIR(s_ifdir)) s_ifdir<<=1;
   assert(s_ifdir);
   while (s_ifreg && !S_ISREG(s_ifreg)) s_ifreg<<=1;
   assert(s_ifreg);
-//  if (strcmp(format,"amstrad")==0) amsReadSuper(d,format);
-//  else 
   diskdefReadSuper(d,format);
   boo = Device_setGeometry(&d->dev,d->secLength,d->sectrk,d->tracks,d->offset,d->libdskGeometry);
   if (boo) return -1;
 
-  if (d->skewtab==(int*)0) /* generate skew table */ /*{{{*/
+  if (d->skewtab==(int*)0) /* generate skew table */ 
   {
     int	i,j,k;
 
@@ -1061,8 +1005,8 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
       d->skewtab[i]=j;
     }
   }
-  /*}}}*/
-  /* initialise allocation vector bitmap */ /*{{{*/
+
+  /* initialise allocation vector bitmap */ 
   {
     d->alvSize=((d->secLength*d->sectrk*(d->tracks-d->boottrk))/d->blksiz+INTBITS-1)/INTBITS;
     if ((d->alv=malloc(d->alvSize*sizeof(int)))==(int*)0) 
@@ -1071,7 +1015,7 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
       return -1;
     }
   }
-  /*}}}*/
+
   /* allocate directory buffer */ /*{{{*/
   assert(sizeof(struct PhysDirectoryEntry)==32);
   if ((d->dir=malloc(((d->maxdir*32+d->blksiz-1)/d->blksiz)*d->blksiz))==(struct PhysDirectoryEntry*)0)
@@ -1079,17 +1023,16 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
     boo=strerror(errno);
     return -1;
   }
-  /*}}}*/
-  if (!d->dev.opened) /* create empty directory in core */ /*{{{*/
+
+  if (!d->dev.opened) /* create empty directory in core */ 
   {
     memset(d->dir,0xe5,d->maxdir*32);
     printf("Notopened image");
   }
-  /*}}}*/
-  else /* read directory in core */ /*{{{*/
+
+  else /* read directory in core */ 
   {
     int i,blocks,entry;
-//    printf("read directory in core");
     blocks=(d->maxdir*32+d->blksiz-1)/d->blksiz;
     entry=0;
     for (i=0; i<blocks; ++i) 
@@ -1098,13 +1041,13 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
       entry+=(d->blksiz/32);
     }
   }
-  /*}}}*/
+
   alvInit(d);
-  if (d->type&CPMFS_CPM3_OTHER) /* read additional superblock information */ /*{{{*/
+  if (d->type&CPMFS_CPM3_OTHER) /* read additional superblock information */ 
   {
     int i;
 
-    /* passwords */ /*{{{*/
+    /* passwords */ 
     {
       int passwords=0;
 
@@ -1140,8 +1083,7 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
         }
       }
     }
-    /*}}}*/
-    /* disc label */ /*{{{*/
+    /* disc label */ 
     for (i=0; i<d->maxdir; ++i) if (d->dir[i].status==(char)0x20)
     {
       int j;
@@ -1170,9 +1112,7 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
       d->cnotatime=1;
       d->labelLength=0;
     }
-    /*}}}*/
   }
-  /*}}}*/
   else
   {
     d->passwdLength=0;
@@ -1193,8 +1133,8 @@ int cpmReadSuper(struct cpmSuperBlock *d, struct cpmInode *root, const char *for
 
   return 0;
 }
-/*}}}*/
-/* syncDs             -- write all datestamper timestamps        */ /*{{{*/
+
+/* syncDs             -- write all datestamper timestamps        */ 
 static int syncDs(struct cpmSuperBlock *sb)
 {
   if (sb->dirtyDs)
@@ -1226,8 +1166,8 @@ static int syncDs(struct cpmSuperBlock *sb)
   }
   return 0;
 }
-/*}}}*/
-/* cpmSync            -- write directory back                    */ /*{{{*/
+
+/* cpmSync            -- write directory back                    */ 
 int cpmSync(struct cpmSuperBlock *sb)
 {
   if (sb->dirtyDirectory)
@@ -1247,7 +1187,7 @@ int cpmSync(struct cpmSuperBlock *sb)
   return 0;
 }
 /*}}}*/
-/* cpmUmount          -- free super block                        */ /*{{{*/
+/* cpmUmount          -- free super block                        */ 
 void cpmUmount(struct cpmSuperBlock *sb)
 {
   cpmSync(sb);
@@ -1259,15 +1199,14 @@ void cpmUmount(struct cpmSuperBlock *sb)
 }
 /*}}}*/
 
-/* cpmNamei           -- map name to inode                       */ /*{{{*/
+/* cpmNamei           -- map name to inode                       */ 
 int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *i)
 {
-  /* variables */ /*{{{*/
+  /* variables */ 
   int user;
   char name[8],extension[3];
   int highestExtno,highestExt=-1,lowestExtno,lowestExt=-1;
   int protectMode=0;
-  /*}}}*/
 
 #ifdef CPMFS_DEBUG
   printf("cpmNamei: map %s\n", filename);
@@ -1277,13 +1216,12 @@ int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *
     boo="No such file";
     return -1;
   }
-  if (strcmp(filename,".")==0 || strcmp(filename,"..")==0) /* root directory */ /*{{{*/
+  if (strcmp(filename,".")==0 || strcmp(filename,"..")==0) /* root directory */ 
   {
     *i=*dir;
     return 0;
   }
-  /*}}}*/
-  else if (strcmp(filename,"[passwd]")==0 && dir->sb->passwdLength) /* access passwords */ /*{{{*/
+  else if (strcmp(filename,"[passwd]")==0 && dir->sb->passwdLength) /* access passwords */ 
   {
     i->attr=0;
     i->ino=dir->sb->maxdir+1;
@@ -1293,8 +1231,8 @@ int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *
     i->size=i->sb->passwdLength;
     return 0;
   }
-  /*}}}*/
-  else if (strcmp(filename,"[label]")==0 && dir->sb->labelLength) /* access label */ /*{{{*/
+  
+  else if (strcmp(filename,"[label]")==0 && dir->sb->labelLength) /* access label */ 
   {
     i->attr=0;
     i->ino=dir->sb->maxdir+2;
@@ -1304,9 +1242,9 @@ int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *
     i->size=i->sb->labelLength;
     return 0;
   }
-  /*}}}*/
+
   if (splitFilename(filename,dir->sb->type,name,extension,&user)==-1) return -1;
-  /* find highest and lowest extent */ /*{{{*/
+  /* find highest and lowest extent */ 
   {
     int extent;
 
@@ -1330,9 +1268,9 @@ int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *
       }
     }
   }
-  /*}}}*/
+
   if (highestExtno==-1) return -1;
-  /* calculate size */ /*{{{*/
+  /* calculate size */ 
   {
     int block;
 
@@ -1361,14 +1299,12 @@ int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *
     printf("cpmNamei: size=%ld\n",(long)i->size);
 #endif
   }
-  /*}}}*/
   i->ino=lowestExt;
   i->mode=s_ifreg;
   i->sb=dir->sb;
 
-  /* read timestamps */ /*{{{*/
+  /* read timestamps */ 
   protectMode = readTimeStamps(i,lowestExt);
-  /*}}}*/
 
   /* Determine the inode attributes */
   i->attr = 0;
@@ -1392,8 +1328,8 @@ int cpmNamei(const struct cpmInode *dir, const char *filename, struct cpmInode *
   
   return 0;
 }
-/*}}}*/
-/* cpmStatFS          -- statfs                                  */ /*{{{*/
+
+/* cpmStatFS          -- statfs                                  */ 
 void cpmStatFS(const struct cpmInode *ino, struct cpmStatFS *buf)
 {
   int i;
@@ -1434,8 +1370,8 @@ void cpmStatFS(const struct cpmInode *ino, struct cpmStatFS *buf)
   }
   buf->f_namelen=11;
 }
-/*}}}*/
-/* cpmUnlink          -- unlink                                  */ /*{{{*/
+
+/* cpmUnlink          -- unlink                                  */ 
 int cpmUnlink(const struct cpmInode *dir, const char *fname)
 {
   int user;
@@ -1460,8 +1396,8 @@ int cpmUnlink(const struct cpmInode *dir, const char *fname)
   alvInit(drive);
   return 0;
 }
-/*}}}*/
-/* cpmRename          -- rename                                  */ /*{{{*/
+
+/* cpmRename          -- rename                                  */ 
 int cpmRename(const struct cpmInode *dir, const char *old, const char *new)
 {
   struct cpmSuperBlock *drive;
@@ -1494,8 +1430,8 @@ int cpmRename(const struct cpmInode *dir, const char *old, const char *new)
   } while ((extent=findFileExtent(drive,olduser,oldname,oldext,extent+1,-1))!=-1);
   return 0;
 }
-/*}}}*/
-/* cpmOpendir         -- opendir                                 */ /*{{{*/
+
+/* cpmOpendir         -- opendir                                 */ 
 int cpmOpendir(struct cpmInode *dir, struct cpmFile *dirp)
 {
   if (!S_ISDIR(dir->mode))
@@ -1508,8 +1444,7 @@ int cpmOpendir(struct cpmInode *dir, struct cpmFile *dirp)
   dirp->mode=O_RDONLY;
   return 0;
 }
-/*}}}*/
-/* cpmReaddir         -- readdir                                 */ /*{{{*/
+/* cpmReaddir         -- readdir                                 */ 
 int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
 {
   /* variables */ /*{{{*/
@@ -1517,21 +1452,18 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
   char buf[2+8+1+3+1]; /* 00foobarxy.zzy\0 */
   char *bufp;
   int hasext;
-  /*}}}*/
 
-  if (!(S_ISDIR(dir->ino->mode))) /* error: not a directory */ /*{{{*/
+  if (!(S_ISDIR(dir->ino->mode))) /* error: not a directory */ 
   {
     boo="not a directory";
     return -1;
   }
-  /*}}}*/
   while (1)
   {
     int i;
     
-//    printf("dirpos:%i %s\n\r",dir->pos,buf);
 
-    if (dir->pos==0) /* first entry is . */ /*{{{*/
+    if (dir->pos==0) /* first entry is . */ 
     {
       ent->ino=dir->ino->sb->maxdir;
       ent->reclen=1;
@@ -1540,8 +1472,7 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
       ++dir->pos;
       return 1;
     }
-    /*}}}*/
-    else if (dir->pos==1) /* next entry is .. */ /*{{{*/
+    else if (dir->pos==1) /* next entry is .. */ 
     {
       ent->ino=dir->ino->sb->maxdir;
       ent->reclen=2;
@@ -1550,10 +1481,9 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
       ++dir->pos;
       return 1;
     }
-    /*}}}*/
     else if (dir->pos==2)
     {
-      if (dir->ino->sb->passwdLength) /* next entry is [passwd] */ /*{{{*/
+      if (dir->ino->sb->passwdLength) /* next entry is [passwd] */ 
       {
         ent->ino=dir->ino->sb->maxdir+1;
         ent->reclen=8;
@@ -1562,11 +1492,10 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
         ++dir->pos;
         return 1;
       }
-      /*}}}*/
     }
     else if (dir->pos==3)
     {
-      if (dir->ino->sb->labelLength) /* next entry is [label] */ /*{{{*/
+      if (dir->ino->sb->labelLength) /* next entry is [label] */ 
       {
         ent->ino=dir->ino->sb->maxdir+2;
         ent->reclen=7;
@@ -1575,7 +1504,6 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
         ++dir->pos;
         return 1;
       }
-      /*}}}*/
     }
     else if (dir->pos>=RESERVED_ENTRIES && dir->pos<(int)dir->ino->sb->maxdir+RESERVED_ENTRIES)
     {
@@ -1583,16 +1511,15 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
 
       if ((cur=dir->ino->sb->dir+(dir->pos-RESERVED_ENTRIES))->status>=0 && cur->status<=(dir->ino->sb->type&CPMFS_HI_USER ? 31 : 15))
       {
-        /* determine first extent for the current file */ /*{{{*/
+        /* determine first extent for the current file */ 
         for (i=0; i<dir->ino->sb->maxdir; ++i) if (i!=(dir->pos-RESERVED_ENTRIES))
         {
           if (isMatching(cur->status,cur->name,cur->ext,dir->ino->sb->dir[i].status,dir->ino->sb->dir[i].name,dir->ino->sb->dir[i].ext) && EXTENT(cur->extnol,cur->extnoh)>EXTENT(dir->ino->sb->dir[i].extnol,dir->ino->sb->dir[i].extnoh)) first=i;
         }
-        /*}}}*/
         if (first==(dir->pos-RESERVED_ENTRIES))
         {
           ent->ino=dir->pos-RESERVED_INODES;
-          /* convert file name to UNIX style */ /*{{{*/
+          /* convert file name to UNIX style */ 
           buf[0]='0'+cur->status/10;
           buf[1]='0'+cur->status%10;
           for (bufp=buf+2,i=0; i<8 && (cur->name[i]&0x7f)!=' '; ++i) *bufp++=tolower(cur->name[i]&0x7f);
@@ -1602,7 +1529,6 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
             *bufp++=tolower(cur->ext[i]&0x7f);
           }
           *bufp='\0';
-          /*}}}*/
           assert(bufp<=buf+sizeof(buf));
           ent->reclen=bufp-buf;
           strcpy(ent->name,buf);
@@ -1616,8 +1542,8 @@ int cpmReaddir(struct cpmFile *dir, struct cpmDirent *ent)
     ++dir->pos;
   }
 }
-/*}}}*/
-/* cpmStat            -- stat                                    */ /*{{{*/
+
+/* cpmStat            -- stat                                    */ 
 void cpmStat(const struct cpmInode *ino, struct cpmStat *buf)
 {
   buf->ino=ino->ino;
@@ -1627,8 +1553,8 @@ void cpmStat(const struct cpmInode *ino, struct cpmStat *buf)
   buf->mtime=ino->mtime;
   buf->ctime=ino->ctime;
 }
-/*}}}*/
-/* cpmOpen            -- open                                    */ /*{{{*/
+
+/* cpmOpen            -- open                                    */ 
 int cpmOpen(struct cpmInode *ino, struct cpmFile *file, mode_t mode)
 {
   if (S_ISREG(ino->mode))
@@ -1649,8 +1575,8 @@ int cpmOpen(struct cpmInode *ino, struct cpmFile *file, mode_t mode)
     return -1;
   }
 }
-/*}}}*/
-/* cpmRead            -- read                                    */ /*{{{*/
+
+/* cpmRead            -- read                                    */ 
 int cpmRead(struct cpmFile *file, char *buf, int count)
 {
   int findext=1,findblock=1,extent=-1,block=-1,extentno=-1,got=0,nextblockpos=-1,nextextpos=-1;
@@ -1659,7 +1585,7 @@ int cpmRead(struct cpmFile *file, char *buf, int count)
 
   extcap=(file->ino->sb->size<256 ? 16 : 8)*blocksize;
   if (extcap>16384) extcap=16384*file->ino->sb->extents;
-  if (file->ino->ino==(ino_t)file->ino->sb->maxdir+1) /* [passwd] */ /*{{{*/
+  if (file->ino->ino==(ino_t)file->ino->sb->maxdir+1) /* [passwd] */
   {
     if ((file->pos+count)>file->ino->size) count=file->ino->size-file->pos;
     if (count) memcpy(buf,file->ino->sb->passwd+file->pos,count);
@@ -1669,8 +1595,7 @@ int cpmRead(struct cpmFile *file, char *buf, int count)
 #endif
     return count;
   }
-  /*}}}*/
-  else if (file->ino->ino==(ino_t)file->ino->sb->maxdir+2) /* [label] */ /*{{{*/
+  else if (file->ino->ino==(ino_t)file->ino->sb->maxdir+2) /* [label] */ 
   {
     if ((file->pos+count)>file->ino->size) count=file->ino->size-file->pos;
     if (count) memcpy(buf,file->ino->sb->label+file->pos,count);
@@ -1735,8 +1660,8 @@ int cpmRead(struct cpmFile *file, char *buf, int count)
 #endif
   return got;
 }
-/*}}}*/
-/* cpmWrite           -- write                                   */ /*{{{*/
+
+/* cpmWrite           -- write                                   */ 
 int cpmWrite(struct cpmFile *file, const char *buf, int count)
 {
   int findext=1,findblock=-1,extent=-1,extentno=-1,got=0,nextblockpos=-1,nextextpos=-1;
@@ -1747,7 +1672,7 @@ int cpmWrite(struct cpmFile *file, const char *buf, int count)
 
   while (count>0)
   {
-    if (findext) /*{{{*/
+    if (findext) 
     {
       extentno=file->pos/16384;
       extent=findFileExtent(file->ino->sb,file->ino->sb->dir[file->ino->ino].status,file->ino->sb->dir[file->ino->ino].name,file->ino->sb->dir[file->ino->ino].ext,0,extentno);
@@ -1768,14 +1693,13 @@ int cpmWrite(struct cpmFile *file, const char *buf, int count)
       findext=0;
       findblock=1;
     }
-    /*}}}*/
-    if (findblock) /*{{{*/
+    if (findblock) 
     {
       ptr=(file->pos%extcap)/blocksize;
       if (file->ino->sb->size>=256) ptr*=2;
       block=(unsigned char)file->ino->sb->dir[extent].pointers[ptr];
       if (file->ino->sb->size>=256) block+=((unsigned char)file->ino->sb->dir[extent].pointers[ptr+1])<<8;
-      if (block==0) /* allocate new block, set start/end to cover it */ /*{{{*/
+      if (block==0) /* allocate new block, set start/end to cover it */ 
       {
         if ((block=allocBlock(file->ino->sb))==-1) return (got==0 ? -1 : got);
         file->ino->sb->dir[extent].pointers[ptr]=block&0xff;
@@ -1792,8 +1716,7 @@ int cpmWrite(struct cpmFile *file, const char *buf, int count)
         updateTimeStamps(file->ino,extent);
         updateDsStamps(file->ino,extent);
       }
-      /*}}}*/
-      else /* read existing block and set start/end to cover modified parts */ /*{{{*/
+      else /* read existing block and set start/end to cover modified parts */ 
       {
         start=(file->pos%blocksize)/file->ino->sb->secLength;
         end=((file->pos%blocksize+count)>=blocksize ? blocksize-1 : (file->pos%blocksize+count-1))/file->ino->sb->secLength;
@@ -1814,11 +1737,9 @@ int cpmWrite(struct cpmFile *file, const char *buf, int count)
           }
         }
       }
-      /*}}}*/
       nextblockpos=(file->pos/blocksize)*blocksize+blocksize;
       findblock=0;
     }
-    /*}}}*/
     /* fill block and write it */ /*{{{*/
     file->ino->sb->dirtyDirectory=1;
     while (file->pos!=nextblockpos && count)
@@ -1865,20 +1786,19 @@ int cpmWrite(struct cpmFile *file, const char *buf, int count)
     }
     updateTimeStamps(file->ino,extent);
     updateDsStamps(file->ino,extent);
-    /*}}}*/
     if (file->pos==nextextpos) findext=1;
     else if (file->pos==nextblockpos) findblock=1;
   }
   return got;
 }
-/*}}}*/
-/* cpmClose           -- close                                   */ /*{{{*/
+
+
+/* cpmClose           -- close                                   */ 
 int cpmClose(struct cpmFile *file)
 {
   return 0;
 }
-/*}}}*/
-/* cpmCreaut           -- creat                                   */ /*{{{*/
+/* cpmCreaut           -- creat                                   */ 
 
 int cpmCreat(struct cpmInode *dir, const char *fname, struct cpmInode *ino, mode_t mode)
 {
@@ -1918,16 +1838,15 @@ int cpmCreat(struct cpmInode *dir, const char *fname, struct cpmInode *ino, mode
   updateDsStamps(ino,extent);
   return 0;
 }
-/*}}}*/
 
-/* cpmAttrGet         -- get CP/M attributes                     */ /*{{{*/
+/* cpmAttrGet         -- get CP/M attributes                     */ 
 int cpmAttrGet(struct cpmInode *ino, cpm_attr_t *attrib)
 {
   *attrib = ino->attr;
   return 0;
 }
-/*}}}*/
-/* cpmAttrSet         -- set CP/M attributes                     */ /*{{{*/
+
+/* cpmAttrSet         -- set CP/M attributes                     */ 
 int cpmAttrSet(struct cpmInode *ino, cpm_attr_t attrib)
 {
   struct cpmSuperBlock *drive;
@@ -1968,8 +1887,9 @@ int cpmAttrSet(struct cpmInode *ino, cpm_attr_t attrib)
   
   return 0;
 }
-/*}}}*/
-/* cpmChmod           -- set CP/M r/o & sys                      */ /*{{{*/
+
+
+/* cpmChmod           -- set CP/M r/o & sys                      */ 
 int cpmChmod(struct cpmInode *ino, mode_t mode)
 {
   /* Convert the chmod() into a chattr() call that affects RO */
@@ -1978,8 +1898,8 @@ int cpmChmod(struct cpmInode *ino, mode_t mode)
   if (!(mode & (S_IWUSR|S_IWGRP|S_IWOTH))) newatt |= CPM_ATTR_RO;
   return cpmAttrSet(ino, newatt);
 }
-/*}}}*/
-/* cpmUtime           -- set timestamps                          */ /*{{{*/
+
+/* cpmUtime           -- set timestamps                          */ 
 void cpmUtime(struct cpmInode *ino, struct utimbuf *times)
 {
   ino->atime = times->actime;
@@ -1988,4 +1908,3 @@ void cpmUtime(struct cpmInode *ino, struct utimbuf *times)
   updateTimeStamps(ino,ino->ino);
   updateDsStamps(ino,ino->ino);
 }
-/*}}}*/

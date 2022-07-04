@@ -8,19 +8,16 @@
 #include <string.h>
 #include <time.h>
 
-//#include "getopt_.h"
 #include "cpmfs.h"
 
 #ifdef USE_DMALLOC
 #include <dmalloc.h>
 #endif
-/*}}}*/
 
 /* variables */ /*{{{*/
-  char cbuf[8048];
+char cbuf[8048];
 
 static const char * const month[12]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
-/*}}}*/
 
 /* namecmp -- compare two entries */ /*{{{*/
 static int namecmp(const void *a, const void *b)
@@ -67,12 +64,12 @@ static void olddir(char **dirent, int entries)
   }
   if (entries==0) printf("No files\n");
 }
-/*}}}*/
 
 
 
-/* oldddir -- old style long output */ 
-/*{{{*/
+/* oldddir -- old style long output 
+*  to Base64 encoding
+*/ 
 char * UUoldddir(char **dirent, int entries, struct cpmInode *ino)
 {
   struct cpmStatFS buf;
@@ -88,8 +85,6 @@ char * UUoldddir(char **dirent, int entries, struct cpmInode *ino)
 
     qsort(dirent,entries,sizeof(char*),namecmp);
     cpmStatFS(ino,&buf);
-//    printf("     Name    Bytes   Recs  Attr     update             create\n");
-//    printf("------------ ------ ------ ---- -----------------  -----------------\n");
     announce=0;
     for (l=user=0; user<32; ++user)
     {
@@ -99,16 +94,9 @@ char * UUoldddir(char **dirent, int entries, struct cpmInode *ino)
 
         if (dirent[i][0]=='0'+user/10 && dirent[i][1]=='0'+user%10)
         {
-//          if (announce==1)
-//          {
-//            sprintf(buf,"\nUser %d:\n\n",user);
-//            sprintf(cbuf+strlen(cbuf),"     Name    Bytes   Recs  Attr     update             create\n");
-//            sprintf(cbuf+strlen(cbuf),"------------ ------ ------ ---- -----------------  -----------------\n");
-//          }
           announce=2;
           for (j=2; dirent[i][j] && dirent[i][j]!='.'; ++j) sprintf(cbuf+strlen(cbuf),"%c",toupper(dirent[i][j]));
           k=j; while (k<10) { sprintf(cbuf+strlen(cbuf)," "); ++k; }
-          //putchar('.');
           sprintf(cbuf+strlen(cbuf),".");
           if (dirent[i][j]=='.') ++j;
           for (k=0; dirent[i][j]; ++j,++k) sprintf(cbuf+strlen(cbuf),"%c",toupper(dirent[i][j]));
@@ -120,10 +108,6 @@ char * UUoldddir(char **dirent, int entries, struct cpmInode *ino)
 			buf.f_bsize*(buf.f_bsize/1024));
 
           sprintf(cbuf+strlen(cbuf)," %6.1ld \n",(long)(statbuf.size/128));
-          //putchar(statbuf.mode&0200 ? ' ' : 'R');
-          //putchar(statbuf.mode&01000 ? 'S' : ' ');
-          //putchar(' ');
-//          putchar('\n');
           ++l;
         }
       }
@@ -136,10 +120,9 @@ char * UUoldddir(char **dirent, int entries, struct cpmInode *ino)
 
   return cbuf;
 }
-/*}}}*/
 
 
-/* oldddir -- old style long output */ /*{{{*/
+/* oldddir -- old style long output */
 static void oldddir(char **dirent, int entries, struct cpmInode *ino)
 {
   struct cpmStatFS buf;
@@ -208,10 +191,9 @@ static void oldddir(char **dirent, int entries, struct cpmInode *ino)
   }
   else printf("No files found\n");
 }
-/*}}}*/
 
 
-/* old3dir -- old CP/M Plus style long output */ /*{{{*/
+/* old3dir -- old CP/M Plus style long output */ 
 static void old3dir(char **dirent, int entries, struct cpmInode *ino)
 {
   struct cpmStatFS buf;
@@ -300,7 +282,8 @@ static void old3dir(char **dirent, int entries, struct cpmInode *ino)
   }
   else printf("No files found\n");
 }
-/*}}}*/
+
+
 /* ls      -- UNIX style output */ /*{{{*/
 static void ls(char **dirent, int entries, struct cpmInode *ino, int l, int c, int iflag)
 {
@@ -363,7 +346,8 @@ static void ls(char **dirent, int entries, struct cpmInode *ino, int l, int c, i
     }
   }
 }
-/*}}}*/
+
+
 /* lsattr  -- output something like e2fs lsattr */ /*{{{*/
 static void lsattr(char **dirent, int entries, struct cpmInode *ino)
 {
@@ -409,73 +393,5 @@ static void lsattr(char **dirent, int entries, struct cpmInode *ino)
     }
   }
 }
-/*}}}*/
 
-//const char cmd[]="cpmls";
 
-int lsmain(int argc, char *argv[])
-{
-  /* variables */ /*{{{*/
-  const char *err;
-  const char *image;
-  const char *format;
-  const char *devopts=NULL;
-  int c,usage=0;
-  struct cpmSuperBlock drive;
-  struct cpmInode root;
-  int style=0;
-  int changetime=0;
-  int inode=0;
-  char **gargv;
-  int gargc;
-  static char starlit[2]="*";
-  static char * const star[]={starlit};
-  /*}}}*/
-
-  /* parse options */ /*{{{*/
-/*  if (!(format=getenv("CPMTOOLSFMT"))) format=FORMAT;
-  while ((c=getopt(argc,argv,"cT:f:ih?dDFlA"))!=EOF) switch(c)
-  {
-    case 'f': format=optarg; break;
-    case 'T': devopts=optarg; break;
-    case 'h':
-    case '?': usage=1; break;
-    case 'd': style=1; break;
-    case 'D': style=2; break;
-    case 'F': style=3; break;
-    case 'l': style=4; break;
-    case 'A': style=5; break;
-    case 'c': changetime=1; break;
-    case 'i': inode=1; break;
-  }
-*/
-  if (optind==argc) usage=1;
-  else image=argv[optind++];
-
-  if (usage)
-  {
-    printf("Usage: [-f format] [-T libdsk-type] [-d|-D|-F|-A|[-l][-c][-i]] image [file ...]\n");
-    exit(1);
-  }
-  /*}}}*/
-  /* open image */ /*{{{*/
-  if ((err=Device_open(&drive.dev,image,O_RDONLY,devopts))) 
-  {
-    printf(" cannot open %s (%s)\n",image,err);
-    exit(1);
-  }
-  if (cpmReadSuper(&drive,&root,format)==-1)
-  {
-    printf(" cannot read superblock (%s)\n",boo);
-    exit(1);
-  }
-  /*}}}*/
-  if (optind<argc) cpmglob(optind,argc,argv,&root,&gargc,&gargv);
-  else cpmglob(0,1,star,&root,&gargc,&gargv);
-  if (style==1) olddir(gargv,gargc);
-  else if (style==2) oldddir(gargv,gargc,&root);
-  else if (style==3) old3dir(gargv,gargc,&root);
-  else if (style==5) lsattr(gargv, gargc, &root); 
-  else ls(gargv,gargc,&root,style==4,changetime,inode);
-  exit(0);
-}

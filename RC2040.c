@@ -40,7 +40,6 @@
 
 #include <unistd.h>
 
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -67,7 +66,6 @@ FIL fild;
 //serial file transfer
 #include "serialfile.c"
 
-
 //2 pages of RAM/ROM for PICO
 #define USERAM 1
 #define USEROM 0
@@ -83,23 +81,37 @@ FIL fild;
 //must be pins on the same slice
 #define soundIO1 15
 #define soundIO2 14
-
 #define PWMrate 90
 
 uint PWMslice;
-uint8_t SPO256Port;
+uint8_t SPO256Port=0x30;
 uint8_t SPO256DataOut;
 uint8_t SPO256DataReady=0;
 
 //Beep
-
 #include "midiNotes.h"
-uint8_t BeepPort;
+uint8_t BeepPort=0x31;
 uint8_t BeepDataOut;
 uint8_t BeepDataReady=0;
 
 
+//NeoPixel
+#include "hardware/pio.h"
+#include "hardware/dma.h"
+#include "ws2812.pio.h"
 
+uint8_t GetNeoData(uint8_t addr);
+
+#define NUM_PIXELS 128
+#define PIXEL_PIN 28
+//True for RGBW , False for RGB Neopixels
+#define RGBW 0
+
+uint8_t NeoPixelPort=0x40;
+uint8_t NeoPortAddr;
+uint8_t NeoPortData;
+uint8_t NeoPortDataReady=0;
+uint8_t pixels[NUM_PIXELS][3];
 
 
 //RAMROM
@@ -139,8 +151,8 @@ struct ide_controller *ide0;
 char usbcharbuf=0;
 int hasusbcharwaiting=0;
 
+//acia
 int have_acia = 0;
-
 
 struct acia *acia;
 static uint8_t acia_narrow;
@@ -166,7 +178,7 @@ int PIOA=0;
 uint8_t PIOAp[]={16,17,18,19,20,21,26,27};
 
 //PICO GPIO
-// use regular LED
+// use regular LED (gpio 25 most likly)
 const uint LEDPIN = PICO_DEFAULT_LED_PIN;
 
 const uint HASSwitchesIO =22;
@@ -211,6 +223,7 @@ static uint8_t bankenable;
 static uint8_t switchrom = 1;
 //static uint32_t romsize = 65536;
 
+/*
 #define CPUBOARD_Z80		0
 #define CPUBOARD_SC108		1
 #define CPUBOARD_SC114		2
@@ -224,6 +237,7 @@ static uint8_t switchrom = 1;
 #define CPUBOARD_PDOG512	10
 
 static uint8_t cpuboard = CPUBOARD_Z80;
+*/
 
 static uint8_t have_ctc;
 static uint8_t have_16x50;
@@ -286,9 +300,6 @@ static uint8_t mem_read0(uint16_t addr)
             return ram[addr];
           }
       }
-
-
-	
 }
 
 static void mem_write0(uint16_t addr, uint8_t val)
@@ -307,9 +318,6 @@ static void mem_write0(uint16_t addr, uint8_t val)
             ram[addr]=val;
           }
       }
-
-
-
 }
 
 
@@ -1264,7 +1272,7 @@ static uint8_t io_read_2014(uint16_t addr)
 	else if (addr==PIOA) return PIOA_read();	
 	else if (addr==SPO256Port) return SPO256DataReady;
 	else if (addr==BeepPort) return BeepDataReady;
-
+        else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7) return GetNeoData(addr-NeoPixelPort);
 	if (trace & TRACE_UNK)
 		printf( "Unknown read from port %04X\n", addr);
 	return 0x78;	/* 78 is what my actual board floats at */
@@ -1298,6 +1306,11 @@ static void io_write_2014(uint16_t addr, uint8_t val, uint8_t known)
 	else if (addr==PIOA)PIOA_write(val);	
 	else if (addr==SPO256Port){SPO256DataOut=val;SPO256DataReady=1;}
 	else if (addr==BeepPort){BeepDataOut=val;BeepDataReady=1;}
+	else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7){
+		NeoPortAddr=(addr-NeoPixelPort)&7;
+		NeoPortData=val;
+		NeoPortDataReady=1;
+		}
 	else if (addr == 0xFD) {
 		trace &= 0xFF00;
 		trace |= val;
@@ -1779,8 +1792,139 @@ void Beep(uint8_t note){
     }
 }
 
+//############################################################################################################
+//######################## NEO PIXEL DRIVER ######################################
+//############################################################################################################
 
 
+static inline void put_pixel(uint32_t pixel_grb) {
+    pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
+}
+
+static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
+    return ((uint32_t)(r) << 8) |
+           ((uint32_t)(g) << 16) |
+           (uint32_t)(b);
+}
+
+void set_pixel(int pixel,uint8_t r, uint8_t g, uint8_t b){
+    pixels[pixel][0]=r;
+    pixels[pixel][1]=g;
+    pixels[pixel][2]=b;
+  
+} 
+
+void send_pixels(void){
+    int p;
+    uint32_t data[NUM_PIXELS];
+    for (p=0;p<NUM_PIXELS;p++){
+        data[p]=(urgb_u32(pixels[p][0],pixels[p][1],pixels[p][2])<<8u);
+    }
+  
+    for (p=0;p<NUM_PIXELS;p++){
+        pio_sm_put_blocking(pio0, 0, data[p]);
+    }
+}
+
+void ClearAllPixels(void){
+    for (int i = 0; i <= NUM_PIXELS; i++) {
+        put_pixel(urgb_u32(0, 0, 0));  // Black or off
+    }
+
+}
+
+void init_neo(void){
+
+    PIO pio = pio0;
+    int sm = 0;
+    uint offset = pio_add_program(pio, &ws2812_program);
+
+    ws2812_program_init(pio, sm, offset, PIXEL_PIN, 800000, RGBW);
+
+/*
+    set_pixel(0,0xff,0,0);
+    set_pixel(1,0,0xff,0);
+    set_pixel(2,0,0,0xff);
+
+    set_pixel(3,0xff,0xff,0);
+    set_pixel(4,0xff,0,0xff);
+    set_pixel(5,0,0xff,0xff);
+    set_pixel(6,0xff,0xff,0xff);
+*/
+    send_pixels();
+}
+
+//neo vars
+
+uint8_t neoaddr;
+uint8_t neored;
+uint8_t neogreen;
+uint8_t neoblue;
+uint8_t neodata;
+uint8_t neorepeat;
+
+uint8_t GetNeoData(uint8_t addr){
+
+   switch (addr){
+     case 0:
+       return neodata;
+       break;
+     case 1:
+       break;
+     case 2:
+       break;
+     case 3:
+       break;
+     case 4:
+       break;
+     case 5:
+       return neored;
+       break;
+     case 6:
+       return neogreen;
+       break;
+     case 7:
+       return neoblue;
+       break;
+   }    
+}
+
+void DoNeoCmd(uint8_t data){
+
+}
+
+
+void DoNeo(uint8_t addr,uint8_t data){
+
+//   printf("Do Neo %i %i \n\r",addr,data);
+
+   switch (addr){
+     case 0:
+       neodata=data;
+       break;
+     case 1:
+       DoNeoCmd(data);
+       break;
+     case 2:
+       break;
+     case 3:
+       set_pixel(data,neored,neogreen,neoblue);
+       send_pixels();
+//       printf("%i %i %i -> %i \n\r",data,neored,neogreen,neoblue);
+       break;
+     case 4:
+       break;
+     case 5:
+       neored=data;
+       break;
+     case 6:
+       neogreen=data;
+       break;
+     case 7:
+       neoblue=data;
+       break;
+  }
+}
 
 
 
@@ -1790,25 +1934,34 @@ void Beep(uint8_t note){
 //################################################# Core 1 ####################################################
 //############################################################################################################
 
-void Core2Main(void){
-  SetPWM();
+void Core1Main(void){
+
 //  printf("\n#Core 1 Starting#\n");
 
-  //RC2040
-  uint8_t alist[] ={AR1,PA3,SS1,SS1,IY1,PA3,TT2,WH1,EH1,EH1,NN1,PA2,PA3,TT2,IY1,PA5,FF1,OR1,PA3,TT2,IY1,PA5};
-  PlayAllophones(alist,sizeof(alist));
+// init sound
+    SetPWM();
   
-  while(1){
-    if(SPO256DataReady>0){
-      PlayAllophone(SPO256DataOut);
-      SPO256DataReady=0;
-    }  
-    if(BeepDataReady>0){
-      Beep(BeepDataOut);
-      BeepDataReady=0;
-    }  
-    sleep_ms(1);
-    tight_loop_contents();
+//init neopixels
+    init_neo();
+
+//SAY RC2040
+    uint8_t alist[] ={AR1,PA3,SS1,SS1,IY1,PA3,TT2,WH1,EH1,EH1,NN1,PA2,PA3,TT2,IY1,PA5,FF1,OR1,PA3,TT2,IY1,PA5};
+    PlayAllophones(alist,sizeof(alist));
+  
+    while(1){
+      if(SPO256DataReady>0){
+        PlayAllophone(SPO256DataOut);
+        SPO256DataReady=0;
+      }  
+      if(BeepDataReady>0){
+        Beep(BeepDataOut);
+        BeepDataReady=0;
+      }    
+      if(NeoPortDataReady>0){
+        DoNeo(NeoPortAddr,NeoPortData);
+        NeoPortDataReady=0;
+      }
+      tight_loop_contents();
   }
 }
 
@@ -1937,36 +2090,37 @@ int main(int argc, char *argv[])
 	  jpc = iniparser_getint(ini, "ROM:jumpto", 0);
 
           // Use Ide
-	  ide=iniparser_getint(ini, "IDE:ide",1);
+	  ide = iniparser_getint(ini, "IDE:ide",1);
 	  
 	  // IDE cf file
-	  iscf=iniparser_getint(ini, "IDE:iscf", iscf);
+	  iscf = iniparser_getint(ini, "IDE:iscf", iscf);
 	  
-	  idepathi =iniparser_getstring(ini, "IDE:idefilei", "");
-	  idepath =iniparser_getstring(ini, "IDE:idefile", idepath);
+	  idepathi = iniparser_getstring(ini, "IDE:idefilei", "");
+	  idepath = iniparser_getstring(ini, "IDE:idefile", idepath);
 	  
 	  // USB or UART
-	  UseUsb=iniparser_getint(ini, "CONSOLE:port", 1);
+	  UseUsb = iniparser_getint(ini, "CONSOLE:port", 1);
 
 	  // ACIA /SERIAL
-          SerialType=iniparser_getint(ini, "EMULATION:serialtype",0 );
+          SerialType = iniparser_getint(ini, "EMULATION:serialtype",0 );
           
           // ININAME
-          inidesc=iniparser_getstring(ini, "EMULATION:inidesc","Default ini" );
+          inidesc = iniparser_getstring(ini, "EMULATION:inidesc","Default ini" );
           sprintf(temp,"INI Description: %s \n\r",inidesc,1);
           PrintToSelected(temp,1);
 
           // Trace enable from inifile
-	  trace=iniparser_getint(ini, "DEBUG:trace",0 );
+	  trace = iniparser_getint(ini, "DEBUG:trace",0 );
 
 	  // PORT
-	  PIOA=iniparser_getint(ini, "[PORT]:pioa",0 );
+	  PIOA = iniparser_getint(ini, "[PORT]:pioa",0 );
 
-	  SPO256Port=iniparser_getint(ini, "[PORT]:spo256",0x30 );
-	  BeepPort=iniparser_getint(ini, "[PORT]:beep",0x31 );
+	  SPO256Port = iniparser_getint(ini, "[PORT]:spo256",SPO256Port );
+	  BeepPort = iniparser_getint(ini, "[PORT]:beep",BeepPort );
+	  NeoPixelPort = iniparser_getint(ini,"[PORT]:Neo", NeoPixelPort);
 
           // Overclock
-	  overclock=iniparser_getint(ini, "SPEED:overclock",0 );
+	  overclock = iniparser_getint(ini, "SPEED:overclock",0 );
 	  if (overclock>0){
 	        sprintf(temp,"Overclock to %i000\n\r",overclock,1);
 	        PrintToSelected(temp,1);
@@ -2020,9 +2174,7 @@ int main(int argc, char *argv[])
 
 
 //init Emulation
-        cpuboard=0;  //remove shouldnt be needed any more
 
-	//Fast -f // probably doesnt mean anything anymore no nano delay.
 	fast = 1;
 
 	if (SerialType==0){
@@ -2081,7 +2233,6 @@ int main(int argc, char *argv[])
                         }
                         FRESULT ide_frd=f_open(&fild, idepath, FA_READ | FA_WRITE);
                         if ( ide_frd != FR_OK) {
-				//perror(idepath);
 				printf("Error IDE Data Open Fail %s ",idepath);
 				ide = 0;
 				if (trace & TRACE_IDE) printf( "IDE0 Data Open fail");
@@ -2119,9 +2270,10 @@ int main(int argc, char *argv[])
 		printf( "Invalid input device %d.\n", indev);
 	}
 
-//Start Core2
-        multicore_launch_core1(Core2Main);
+//Start Core1
+        multicore_launch_core1(Core1Main);
         printf("\n#Core 1 Started#\n\n");
+        
 //Init Z80
 	tc.tv_sec = 0;
 	tc.tv_nsec = 20000000L;
@@ -2140,8 +2292,6 @@ int main(int argc, char *argv[])
 	cpu_z80.memRead = mem_read;
 	cpu_z80.memWrite = mem_write;
 	cpu_z80.trace = z80_trace;
-
-	
 
 
 	PrintToSelected("\r\n #####################################\n\r",0);
@@ -2186,7 +2336,6 @@ int main(int argc, char *argv[])
                 }
 
 		for (i = 0; i < 40; i++) {  //origional
-//              for (i = 0; i < 100; i++) {
 			int j;
 //			for (j = 0; j < 100; j++) {//origional
 			for (j = 0; j < 50; j++) {
@@ -2205,9 +2354,6 @@ int main(int argc, char *argv[])
 		//fake USB char in interrupts
 		if (UseUsb==1) intUSBcharwaiting();
 		
-		/* Do 20ms of I/O and delays */
-//		if (!fast) sleep_ms(20);
-
 		if (int_recalc) {
 			/* If there is no pending Z80 vector IRQ but we think
 			   there now might be one we use the same logic as for

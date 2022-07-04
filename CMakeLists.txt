@@ -10,6 +10,8 @@
   set(CMAKE_C_STANDARD 11)
   set(CMAKE_CXX_STANDARD 17)
 
+  pico_sdk_init()
+
 
   add_executable(RC2040
 	RC2040.c 
@@ -25,7 +27,9 @@
 
   )
 
-  pico_sdk_init()
+  pico_generate_pio_header(RC2040  ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
+
+
 
   add_subdirectory(FatFs_SPI build)
 
@@ -40,6 +44,9 @@
     hardware_gpio 
     hardware_pwm
     pico_stdlib
+    hardware_pio 
+    hardware_dma 
+    hardware_irq
     FatFs_SPI
     libz80
   )
@@ -48,5 +55,4 @@
   pico_enable_stdio_uart(RC2040 0)
 
   pico_add_extra_outputs(RC2040)
-
 
