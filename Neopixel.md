@@ -5,32 +5,32 @@ If you wish to use the 32bit LEDS you will need to recompile with WRGB set to tr
 
 The NeoPixel ports are 64-71
 
-64 Data
-65 Cmd
-66 Spare(currently)
-67 Led Address
-68 Pallette Address
-69 Red
-70 Green
-71 Blue
+|64 |Data|
+|65 |Cmd|
+|66 |Spare(currently)|
+|67 |Led Address|
+|68 |Pallette Address|
+|69 |Red|
+|70 |Green|
+|71 |Blue|
 
 Commands
 
-1	Set NormalMode
-2	Set Pallette Mode
-3	set repeat
-4	set brightness
-5	Set Number of pixels (Max and default 128) 
-6	Spare
-7	Spare
-8	Spare
-9	Spare
-10	info (debug)
-11	Spare
-12	Spare
-13	Spare
-14	Set all from RGB values
-15	All Off (RGB=0)
+|1|	Set NormalMode|
+|2|	Set Pallette Mode|
+|3|	set repeat|
+|4|	set brightness|
+|5|	Set Number of pixels (Max and default 128) |
+|6|	Spare|
+|7|	Spare|
+|8|	Spare|
+|9|	Spare|
+|10|	info (debug)|
+|11|	Spare|
+|12|	Spare|
+|13|	Spare|
+|14|	Set all from RGB values|
+|15|	All Off (RGB=0)|
 
 
 ## Simple usage
