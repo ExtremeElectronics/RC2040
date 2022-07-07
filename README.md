@@ -97,13 +97,13 @@ The Allophone (decimal) numbers can be sourced from "Allophone DataSheet Addendu
 For examples, look in the basic examples folder
 
 ### Neo pixels
-basic neo pixel support (currently) using data from gpio 28
+Neo pixel support on GPIO pin 28
 default is 8 ports from a base of 64 
 
 Set a colour using R=port 69, G=port 70, B=port 71
 then set the n'th LED to that colour by writing n to port 67 
 
-all very likly to change
+see Neopixel.md for more detail
 
 
 ## Progress
