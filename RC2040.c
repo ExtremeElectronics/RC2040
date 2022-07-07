@@ -112,7 +112,7 @@ uint8_t NeoPortAddr;
 uint8_t NeoPortData;
 uint8_t NeoPortDataReady=0;
 uint8_t pixels[NUM_PIXELS][3];
-
+uint8_t pixelspallette[256][3];
 
 //RAMROM
 static uint8_t ram[0x10000]; //64k
@@ -1797,6 +1797,19 @@ void Beep(uint8_t note){
 //############################################################################################################
 
 
+
+//neo vars
+
+uint8_t neoaddr;
+uint8_t neored;
+uint8_t neogreen;
+uint8_t neoblue;
+uint8_t neodata;
+uint8_t neorepeat;
+uint8_t neobrightness=255;
+uint8_t neomode; // 0 normal, 1 pallette
+uint8_t neomax=NUM_PIXELS;
+
 static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
 }
@@ -1807,28 +1820,45 @@ static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
            (uint32_t)(b);
 }
 
-void set_pixel(int pixel,uint8_t r, uint8_t g, uint8_t b){
+static inline uint8_t value_bright(uint8_t value, uint8_t bright){
+    return value*bright>>8;
+}
+
+void set_pixel_value(uint8_t pixel,uint8_t r, uint8_t g, uint8_t b){
     pixels[pixel][0]=r;
     pixels[pixel][1]=g;
     pixels[pixel][2]=b;
-  
 } 
+
+
+void set_pixel_pallette(uint8_t pixel,uint8_t pallette){
+    set_pixel_value(pixel,pixelspallette[pallette][0],pixelspallette[pallette][1],pixelspallette[pallette][2]);
+}
 
 void send_pixels(void){
     int p;
     uint32_t data[NUM_PIXELS];
-    for (p=0;p<NUM_PIXELS;p++){
-        data[p]=(urgb_u32(pixels[p][0],pixels[p][1],pixels[p][2])<<8u);
+    if(neobrightness<255){
+        for (p=0;p<neomax;p++){
+            data[p]=(urgb_u32(value_bright(pixels[p][0],neobrightness),
+                          value_bright(pixels[p][1],neobrightness),
+                          value_bright(pixels[p][2],neobrightness)
+                          )<<8u);
+        }
+    }else{
+        for (p=0;p<neomax;p++){
+            data[p]=(urgb_u32(pixels[p][0],pixels[p][1],pixels[p][2])<<8u);
+        }
     }
   
-    for (p=0;p<NUM_PIXELS;p++){
+    for (p=0;p<neomax;p++){
         pio_sm_put_blocking(pio0, 0, data[p]);
     }
 }
 
-void ClearAllPixels(void){
-    for (int i = 0; i <= NUM_PIXELS; i++) {
-        put_pixel(urgb_u32(0, 0, 0));  // Black or off
+void SetAllPixels(uint8_t red,uint8_t green,uint8_t blue){
+    for (int i = 0; i <= neomax; i++) {
+        put_pixel(urgb_u32(red, green, blue));  // Black or off
     }
 
 }
@@ -1841,27 +1871,21 @@ void init_neo(void){
 
     ws2812_program_init(pio, sm, offset, PIXEL_PIN, 800000, RGBW);
 
-/*
-    set_pixel(0,0xff,0,0);
-    set_pixel(1,0,0xff,0);
-    set_pixel(2,0,0,0xff);
-
-    set_pixel(3,0xff,0xff,0);
-    set_pixel(4,0xff,0,0xff);
-    set_pixel(5,0,0xff,0xff);
-    set_pixel(6,0xff,0xff,0xff);
-*/
     send_pixels();
 }
 
-//neo vars
+void neoinfo(void){
+    printf("\n\rNeoInfo\n\r");
+    printf("Mode: %X \n\r",neomode);
+    printf("Brightness %X\n\r",neobrightness);
+    printf("Pallette\n\r");
+    printf(" R  G  B \n\r");
+    for(int a=0;a<128;a++){
+        printf(" %02X %02X %02X \n\r",pixelspallette[a][0],pixelspallette[a][1],pixelspallette[a][2]);   
+    }
+    printf("\n\r");
 
-uint8_t neoaddr;
-uint8_t neored;
-uint8_t neogreen;
-uint8_t neoblue;
-uint8_t neodata;
-uint8_t neorepeat;
+}
 
 uint8_t GetNeoData(uint8_t addr){
 
@@ -1873,7 +1897,7 @@ uint8_t GetNeoData(uint8_t addr){
        break;
      case 2:
        break;
-     case 3:
+     case 3:       
        break;
      case 4:
        break;
@@ -1890,9 +1914,36 @@ uint8_t GetNeoData(uint8_t addr){
 }
 
 void DoNeoCmd(uint8_t data){
-
+   switch (data){
+     case 1:
+       neomode=0;
+       break;
+     case 2:
+       neomode=1;
+       break;
+     case 3:
+       neorepeat=neodata;
+       break;
+     case 4:
+       neobrightness=neodata;
+       send_pixels();
+       break;
+     case 5:
+       neomax=neodata;
+       if (neomax>NUM_PIXELS) neomax=NUM_PIXELS;	  
+       break;
+     case 10:
+       neoinfo();
+       break;	
+     case 14:
+       SetAllPixels(neored,neogreen,neoblue);       
+       break;
+     case 15:
+       SetAllPixels(0,0,0);
+       break;
+   }             	    
+     
 }
-
 
 void DoNeo(uint8_t addr,uint8_t data){
 
@@ -1908,11 +1959,21 @@ void DoNeo(uint8_t addr,uint8_t data){
      case 2:
        break;
      case 3:
-       set_pixel(data,neored,neogreen,neoblue);
+       if (neomode==0) set_pixel_value(data,neored,neogreen,neoblue);
+       if (neomode==1) set_pixel_pallette(data,neodata);
+       if (neorepeat>0){
+           for (int p=neorepeat;p<neomax;p++){
+               pixels[p][0]=pixels[p-neorepeat][0];
+               pixels[p][1]=pixels[p-neorepeat][1];
+               pixels[p][2]=pixels[p-neorepeat][2];
+           }
+       }    
        send_pixels();
-//       printf("%i %i %i -> %i \n\r",data,neored,neogreen,neoblue);
        break;
      case 4:
+       pixelspallette[data][0]=neored;
+       pixelspallette[data][1]=neogreen;
+       pixelspallette[data][2]=neoblue;
        break;
      case 5:
        neored=data;
@@ -1950,16 +2011,16 @@ void Core1Main(void){
   
     while(1){
       if(SPO256DataReady>0){
-        PlayAllophone(SPO256DataOut);
-        SPO256DataReady=0;
+          PlayAllophone(SPO256DataOut);
+          SPO256DataReady=0;
       }  
       if(BeepDataReady>0){
-        Beep(BeepDataOut);
-        BeepDataReady=0;
+          Beep(BeepDataOut);
+          BeepDataReady=0;
       }    
       if(NeoPortDataReady>0){
-        DoNeo(NeoPortAddr,NeoPortData);
-        NeoPortDataReady=0;
+          DoNeo(NeoPortAddr,NeoPortData);
+          NeoPortDataReady=0;
       }
       tight_loop_contents();
   }
@@ -2042,9 +2103,9 @@ int main(int argc, char *argv[])
         sd_card_t *pSD = sd_get_by_num(0);
         FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
         if (FR_OK != fr){
-        // panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-          PrintToSelected("SD INIT FAIL  \n\r",1);
-          while(1); //halt
+            // panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
+            PrintToSelected("SD INIT FAIL  \n\r",1);
+            while(1); //halt
         }
 
         PrintToSelected("SD INIT OK \n\r",1);
@@ -2138,15 +2199,15 @@ int main(int argc, char *argv[])
           rombank=GetRomSwitches();
                   
         }else{
-          uart_puts(UART_ID,"No  \n\r");
-          printf("SD INIT OK \n\r",1);
+            uart_puts(UART_ID,"No  \n\r");
+            printf("SD INIT OK \n\r",1);
         }
 
         flash_led(200);
         if (UseUsb){
-          PrintToSelected("\rWaiting for USB to connect\n\r",1);
-          //if usb wait for usb to connect.
-          while (!tud_cdc_connected()) { sleep_ms(100);  }
+            PrintToSelected("\rWaiting for USB to connect\n\r",1);
+            //if usb wait for usb to connect.
+            while (!tud_cdc_connected()) { sleep_ms(100);  }
         }
 
         
@@ -2171,48 +2232,45 @@ int main(int argc, char *argv[])
 
 
 
-
-
 //init Emulation
-
 	fast = 1;
 
 	if (SerialType==0){
-  	  //ACIA enable 
+  	    //ACIA enable 
   	  
-  	  //SIO
-	  sio2 = 0;
-	  sio2_input = 0;
-	  //ACIA
-	  have_acia = 1;
-	  indev = INDEV_ACIA;
-          acia_narrow = 0;
-          PrintToSelected("\rACIA selected\n\r",1);
+  	    //SIO
+	    sio2 = 0;
+	    sio2_input = 0;
+	    //ACIA
+	    have_acia = 1;
+	    indev = INDEV_ACIA;
+            acia_narrow = 0;
+            PrintToSelected("\rACIA selected\n\r",1);
         }else{
-          //SIO enable 
+            //SIO enable 
           
-          //SIO
-          sio2 = 1;
-          sio2_input = 1;
-          indev = INDEV_SIO;
-          //ACIA
-          have_acia = 0;
-          acia_narrow = 0;
-          PrintToSelected("\rSIO selected\n\r",1);
+            //SIO
+            sio2 = 1;
+            sio2_input = 1;
+            indev = INDEV_SIO;
+            //ACIA
+            have_acia = 0;
+            acia_narrow = 0;
+            PrintToSelected("\rSIO selected\n\r",1);
         }
         
         //ram only system, hey we are emulating this, we can do ANYTHING!! 
         if (ramonly==1){
-          // Read RAM from SD
-          ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
-          sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s %s' \n\r",romfile,idepathi,idepath);
-          romdisable =1; //disable romswitching
+           // Read RAM from SD
+           ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
+           sprintf(RomTitle,"Loading: '%s' 64K RAM only image - CPM CF File:'%s %s' \n\r",romfile,idepathi,idepath);
+           romdisable =1; //disable romswitching
         }else{
-          // Read Rom from SD
-          ReadSdToRamrom(fr,romfile,romsize,0x2000*rombank,USEROM);   //load directly to rom
-          sprintf(RomTitle,"Loading: '%s'[rombank:%i] for 0x%X bytes \n\r",romfile,rombank,romsize);
-          PrintToSelected(RomTitle,1);
-          sprintf(RomTitle,"CPM/IDE File:'%s %s' \n\r",idepath,idepathi);
+           // Read Rom from SD
+           ReadSdToRamrom(fr,romfile,romsize,0x2000*rombank,USEROM);   //load directly to rom
+           sprintf(RomTitle,"Loading: '%s'[rombank:%i] for 0x%X bytes \n\r",romfile,rombank,romsize);
+           PrintToSelected(RomTitle,1);
+           sprintf(RomTitle,"CPM/IDE File:'%s %s' \n\r",idepath,idepathi);
         }
         PrintToSelected(RomTitle,1);
 
@@ -2281,9 +2339,9 @@ int main(int argc, char *argv[])
 	Z80RESET(&cpu_z80);
 	//nonstandard start vector
 	if(jpc){
-	  cpu_z80.PC=jpc;
-          sprintf(temp,"Starting at 0x%04X \n\r",jpc);
-          PrintToSelected(temp,1);
+	    cpu_z80.PC=jpc;
+            sprintf(temp,"Starting at 0x%04X \n\r",jpc);
+            PrintToSelected(temp,1);
 
 	}
 	
