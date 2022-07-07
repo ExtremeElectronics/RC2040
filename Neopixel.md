@@ -77,5 +77,7 @@ write the brightness to Data (port 64) and then send 4 to Cmd (port 65)
 Setting the max number of pixels can increase the speed, as can not setting a brightness (brightness 255) 
 This can be set either in RGB values, or via the pallette.
 
+If you are writing too fast to the driver it will just ignore commands. 
+
 
 
