@@ -4,7 +4,8 @@ The neopixel data out pin is on GPIO 28. This is currently set to support WS2812
 If you wish to use the 32bit LEDS you will need to recompile with WRGB set to true
 
 The NeoPixel ports are 64-71
-
+|Port|Usage|
+|----|-----|
 |64 |Data|
 |65 |Cmd|
 |66 |Spare(currently)|
