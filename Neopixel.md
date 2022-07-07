@@ -16,7 +16,8 @@ The NeoPixel ports are 64-71
 |71 |Blue|
 
 Commands
-
+|Command|Usage|
+|-------|-------------|
 |1|	Set NormalMode|
 |2|	Set Pallette Mode|
 |3|	set repeat|
