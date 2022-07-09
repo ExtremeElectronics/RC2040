@@ -1,8 +1,9 @@
 10 REM Speak The quick brown fox... using allophones
+15 REM Base port of 40
 20 READ X
 30 IF X=255 THEN GOTO 80
-40 OUT 48,X
-50 WHILE(INP(48)>0)
+40 OUT 40,X
+50 WHILE(INP(40)>0)
 60 WEND
 70 GOTO 20
 80 END
