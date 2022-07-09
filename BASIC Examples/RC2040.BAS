@@ -1,8 +1,8 @@
-5 Speak 'RC2040' using allophone data
+5 rem Speak 'RC2040' using allophone data Bae port 40
 10 FOR A=1 TO 22
 20 READ X
-30 OUT 48,X
-40 WHILE(INP(48)>0)
+30 OUT 40,X
+40 WHILE(INP(40)>0)
 50 WEND
 60 NEXT A
 100 DATA 59,2,55,55,19,2,13,48,7,7,11,1,2,13,19,4,40,58,2,13,19,4
