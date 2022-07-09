@@ -1,4 +1,4 @@
-10 REM Speak The quick brown fox... using allophones
+10 REM Speak The quick brown fox.. using allophones
 15 REM Base port of 40
 20 READ X
 30 IF X=255 THEN GOTO 80
