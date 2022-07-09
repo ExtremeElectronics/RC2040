@@ -74,25 +74,26 @@ FIL fild;
 //pico SDK includes
 #include "hardware/pwm.h"
 
-//program includes
+//sp0256al2 includes
 #include "allophones.c"
 #include "allophoneDefs.h"
-
+#define MAXALLOPHONE 64
+//sound 
 //must be pins on the same slice
 #define soundIO1 15
 #define soundIO2 14
 #define PWMrate 90
 
 uint PWMslice;
-uint8_t SPO256Port=0x30;
-uint8_t SPO256DataOut;
-uint8_t SPO256DataReady=0;
+uint8_t SPO256Port=0x28;
+volatile static uint8_t SPO256DataOut;
+volatile static uint8_t SPO256DataReady=0;
 
 //Beep
 #include "midiNotes.h"
-uint8_t BeepPort=0x31;
-uint8_t BeepDataOut;
-uint8_t BeepDataReady=0;
+uint8_t BeepPort=0x29;
+volatile static uint8_t BeepDataOut;
+volatile static uint8_t BeepDataReady=0;
 
 
 //NeoPixel
@@ -1738,6 +1739,8 @@ void PlayAllophone(int al){
     pwm_set_clkdiv(PWMslice,16);
     pwm_set_wrap (PWMslice, 256);
     
+    if(al>MAXALLOPHONE) al=0;
+    
     //get length of allophone sound bite
     s=allophonesizeCorrected[al];
     //and play
@@ -1964,7 +1967,7 @@ void DoNeo(uint8_t addr,uint8_t data){
        if (neorepeat>0){
            for (int p=neorepeat;p<neomax;p++){
                pixels[p][0]=pixels[p-neorepeat][0];
-               pixels[p][1]=pixels[p-neorepeat][1];
+                pixels[p][1]=pixels[p-neorepeat][1];
                pixels[p][2]=pixels[p-neorepeat][2];
            }
        }    
