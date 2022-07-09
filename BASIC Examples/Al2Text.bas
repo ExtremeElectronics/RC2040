@@ -1,4 +1,4 @@
-10 REM Script for the text to Allophone
+10 REM Script for the text to Allophone Base port 40
 15 REM Converter at http://extkits.co.uk/spo256-al2
 20 READ X
 30 IF X = &HFF THEN GOTO 90
