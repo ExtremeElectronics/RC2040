@@ -1,4 +1,4 @@
-5 rem Speak 'RC2040' using allophone data Bae port 40
+5 REM Speak 'RC2040' using allophone data Bae port 40
 10 FOR A=1 TO 22
 20 READ X
 30 OUT 40,X
