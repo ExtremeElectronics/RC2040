@@ -5,6 +5,8 @@ Z80 emulation of RC2014 using the RP2040 processor.
 Initial aim was to get the [EtchedPixels](https://github.com/EtchedPixels) Linux based Z80 emulation including an SD Card based IDE running on a Pi Pico as a standalone.
 I have ripped out much of EtchedPixels's great work, to which I'm truly sorry, but I was only interested in the Z80 emulation, and I needed to get it to fit in an RP2040
 
+## #Warning SPO/Beep port moved to 0x28/0x29 to avoid paging register# 
+
 ## PCB
 A PCB and a full kit of parts is available here https://extkits.co.uk/product/rc2040/ for this project from Extreme Kits http://www.extkits.co.uk 
 
@@ -76,14 +78,14 @@ Sound is output on GPIO 14/15. GPIO 15 is inverted WRT GPIO 14 so you can connec
 
 ### Beep
 
-A background frequency generator can be accessed via Port 0x31
+A background frequency generator can be accessed via Port 0x29 (moved from 31)
 There are 126 notes defined 1-127 (from MIDI notes) sending either 0 or >128 will silence the currently playing note.
 
 For examples, look in the basic examples folder
 
 ### SP0256-AL2
 
-An Emulation of the SPO256-al2 chip can be accessed on port 0x30
+An Emulation of the SPO256-al2 chip can be accessed on port 0x28 (moved from 30)
 Sending a value of 0-63 will play one of the predefined allophones that was contained in the original chip.
 reading the port will give you a non-zero value if the "chip" is still playing.
 
