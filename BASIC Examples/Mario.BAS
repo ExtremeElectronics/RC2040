@@ -1,14 +1,14 @@
 5 REM Play Mario theme tune (badly) using midi notes and lengths in data.
-6 REM 1st data is midi note number, second is duration
+6 REM 1st data is midi note number, second is duration BASE PORT 48
 7 N=1
 10 WHILE (N>0)
 15 READ N
 20 READ D
-30 OUT 41,N
+30 OUT 49,N
 40 FOR B=1 TO D*10
 50 NEXT B
 60 WEND
-70 OUT 41,0
+70 OUT 49,0
 80 END
 100 DATA 76, 12, 76, 12, 20, 12, 76, 12, 20, 12, 72, 12, 76, 12, 20, 12, 79, 12,20, 36, 67, 12, 20, 36
 110 DATA 72, 12, 20, 24, 67, 12, 20, 24, 64, 12, 20, 24, 69, 12, 20, 12, 71, 12,20, 12, 70, 12, 69, 12, 20, 12, 67, 16, 76, 16, 79, 16, 81, 12, 20, 12, 77, 12,79, 12, 20, 12, 76, 12, 20, 12, 72, 12, 74, 12, 71, 12, 20, 24
