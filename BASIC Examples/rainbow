@@ -1,0 +1,45 @@
+
+10 REM Sing a Rainbos with colours
+60 OUT 64,2
+70 OUT 65,3
+80 OUT 64,32
+90 OUT 65,5
+100 print "Note"
+110 read n
+120 OUT 42,n+12
+125 print n
+130 read r
+140 out 69,r
+150 read g
+160 out 70,g
+170 read b
+180 out 71,b
+190 out 67,1
+195 print r,g,b
+200 GOSUB 300
+210 goto 100
+220 END
+300 READ X
+310 IF X = 255 THEN GOTO 350
+315 IF X=2 OR X=0 THEN GOTO 360
+317 print x
+320 OUT 40,X
+330 IF INP(40)>0 THEN GOTO 330
+340 GOTO 300
+350 end
+360 RETURN
+1000 REM  red and yellow and pink and green orange and purple and blue
+1005 rem red and
+1010 DATA 72,  255,0,0  ,14,7,21,2  ,74,  255,0,0  ,15,11,21,2
+1015 rem yel-low and
+1020 DATA 76,  255,255,0 ,49,7,45,0  ,72,  255,255,0  ,53,30,2  ,74,  255,255,0,  15,11,21,2
+1025 rem pink and
+1030 DATA 76,  255,40,40  ,9,12,44,8,2  ,79,  255,40,40  ,15,11,21,2
+1035 rem green ora-nge
+1040 DATA 79,  0,255,0,  36,14,19,11,2  ,81,  255,200,0  ,23,14,0 ,77,  255,200,0  ,12,11,10,2
+1045 rem and Pur-ple 
+1050 DATA 74,  255,0,255,  15,11,21,2  ,79,  255,0,255   ,9,15,14,0  ,76,  255,0,255  ,9,15,45,2
+1055 rem and blue
+1060 DATA 72,  0,0,255,  15,11,21,2  ,74,  0,0,255,  28,45,22,22,2 ,90, 0,0,0,
+1070 DATA 255
+
