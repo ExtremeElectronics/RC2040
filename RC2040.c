@@ -86,8 +86,10 @@ FIL fild;
 
 uint PWMslice;
 uint8_t SPO256Port=0x28;
+uint8_t SPO256FreqPort=0x2a;
 volatile static uint8_t SPO256DataOut;
 volatile static uint8_t SPO256DataReady=0;
+volatile static uint8_t SPO256FreqPortData=90;
 
 //Beep
 #include "midiNotes.h"
@@ -1272,6 +1274,7 @@ static uint8_t io_read_2014(uint16_t addr)
 		return uart_read(&uart[0], addr & 7);
 	else if (addr==PIOA) return PIOA_read();	
 	else if (addr==SPO256Port) return SPO256DataReady;
+	else if (addr==SPO256FreqPort) return SPO256FreqPortData; 
 	else if (addr==BeepPort) return BeepDataReady;
         else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7) return GetNeoData(addr-NeoPixelPort);
 	if (trace & TRACE_UNK)
@@ -1307,6 +1310,7 @@ static void io_write_2014(uint16_t addr, uint8_t val, uint8_t known)
 	else if (addr==PIOA)PIOA_write(val);	
 	else if (addr==SPO256Port){SPO256DataOut=val;SPO256DataReady=1;}
 	else if (addr==BeepPort){BeepDataOut=val;BeepDataReady=1;}
+        else if (addr==SPO256FreqPort){SPO256FreqPortData=val;}
 	else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7){
 		NeoPortAddr=(addr-NeoPixelPort)&7;
 		NeoPortData=val;
@@ -1735,6 +1739,8 @@ int SDFileExists(char * filename){
 void PlayAllophone(int al){
     int b,s;
     uint8_t v;
+    int pwmr=MidiNoteWrap[SPO256FreqPortData & 0x7f]/4;
+
     //reset pwm settings (play notes may change them)
     pwm_set_clkdiv(PWMslice,16);
     pwm_set_wrap (PWMslice, 256);
@@ -1746,7 +1752,8 @@ void PlayAllophone(int al){
     //and play
     for(b=0;b<s;b++){
         v=allophoneindex[al][b]; //get delta value
-        sleep_us(PWMrate);
+//        sleep_us(PWMrate);
+        sleep_us(pwmr);
         pwm_set_both_levels(PWMslice,v,v);
 
     }
@@ -2180,6 +2187,7 @@ int main(int argc, char *argv[])
 	  PIOA = iniparser_getint(ini, "[PORT]:pioa",0 );
 
 	  SPO256Port = iniparser_getint(ini, "[PORT]:spo256",SPO256Port );
+	  SPO256FreqPort = iniparser_getint(ini, "[PORT]:spo256freq",SPO256FreqPort );
 	  BeepPort = iniparser_getint(ini, "[PORT]:beep",BeepPort );
 	  NeoPixelPort = iniparser_getint(ini,"[PORT]:Neo", NeoPixelPort);
 
@@ -2330,6 +2338,7 @@ int main(int argc, char *argv[])
 	default:
 		printf( "Invalid input device %d.\n", indev);
 	}
+
 
 //Start Core1
         multicore_launch_core1(Core1Main);
