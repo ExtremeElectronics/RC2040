@@ -224,7 +224,7 @@ void Base64ToCPM( struct cpmInode *root,  const char *filename){
               if (DEBUG) printf("Chunk:%i",chunk);
               if(chunk>0){
                   printf("Data:\n");
-                  scanf("%4100s",encbuffer);
+                  scanf("%20000s",encbuffer);
                   if (DEBUG) printf("Data:%s",encbuffer);
                   size_t decode_size = strlen(encbuffer);
                   char * decoded_data = base64_decode(encbuffer, decode_size, &decode_size);

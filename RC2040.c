@@ -1197,9 +1197,10 @@ uint8_t ctc_irqmask;
  */
 static void toggle_rom(void)
 {
+	romdisable=!romdisable;
         if (romdisable == 0) {
                 if (trace & TRACE_ROM) printf( "[ROM out(disabled)]\n");
-                romdisable =1;
+                //romdisable =1;
         } else {
                 if (trace & TRACE_ROM) printf( "[ROM in(enabled) ATTEMPTED  ]\n");
 //              romdisable =0;

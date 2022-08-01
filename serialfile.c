@@ -41,7 +41,7 @@
 #include "cpmcp.c"
 #include "cpmls.c"
 
-char buffer[10*1024];
+char buffer[20*1024];
 char linebuffer[1024];
 char cfilename[20];
 int state=0;
