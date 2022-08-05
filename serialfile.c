@@ -1,6 +1,8 @@
 #include <string.h>
 #include <ctype.h>
 #include "base64endecode.c"
+#include <stdint.h>
+#include <unistd.h>
 
 #define DEBUG 0
 
@@ -9,13 +11,16 @@
 #define WAITFORCMD 1
 #define WAITFORDRIVE 2
 #define WAITFORFN 3
-#define CHECK 4
+#define WAITFORADDRESS 4
+#define CHECK 5
+
 //#define RECEIVEDATA 5
 #define DODATA 6
 #define WAITFOREND 7
 #define SENDEND 8
 #define RECEIVEEND 9
 #define TEST 10
+#define WHO 12
 #define EXIT 99
 //#define CMDRM 11
 
@@ -29,6 +34,8 @@
 #define CMDCOPYTO 2
 #define CMDCOPYFROM 3
 #define CMDRM 4
+#define CMDWHO 5
+#define CMDWATCH 6
 
 //tokens
 #define StartToken "&&&-magic-XXX"
@@ -40,6 +47,8 @@
 //cpmtools
 #include "cpmcp.c"
 #include "cpmls.c"
+
+extern uint16_t watch;
 
 char buffer[20*1024];
 char linebuffer[1024];
@@ -62,6 +71,7 @@ char serr[255];
 const char * err;
 char *image;
 
+int Address;
 
 
 void WaitForStart(void){
@@ -102,6 +112,17 @@ void WaitForCMD(void){
        scmd=TEST;
        state=TEST;
     }
+    if (strcmp(linebuffer,"WHO")==0){
+       printf("\nRC2040\n\n");
+       state=WAITFORSTART;
+       scmd=CMDNONE;
+    }
+    if (strcmp(linebuffer,"WATCH")==0){
+       printf("\nRC2040\n\n");
+       state=WAITFORADDRESS;
+       scmd=CMDWATCH;
+    }
+
     if (strcmp(linebuffer,"EXIT")==0){
        scmd=EXIT;
        state=EXIT;
@@ -128,6 +149,22 @@ void WaitForDrive(void){
        state=CHECK;
    }  
 }
+
+
+void WaitForAddress(void){
+   printf("Address:\n");
+   scanf("%x", &Address);
+   if (DEBUG)   printf("%s\n",linebuffer);
+   if (Address<=0xfff && Address>=0){
+       state=CHECK;
+   }else{
+       sprintf(serr,"Address out of range %i",Address);
+       state=CHECK;
+   }
+}
+
+
+
 
 void WaitForFN(void){
    printf("Filename:\n");
@@ -179,6 +216,7 @@ void Check(void){
       if(scmd==CMDCOPYFROM) state=DODATA;
       if(scmd==TEST) state=TEST;
       if(scmd==CMDRM) state=DODATA;
+      if(scmd==CMDWATCH) state=DODATA;
   }else{
       printf("ERROR: %s\n",serr);
       state=WAITFORSTART;
@@ -228,15 +266,6 @@ void DoData(void){
      static char filearg[13]="";
      static char * fargc[]={filearg};
 
-//Open image file
-/*
-    if ((err=Device_f_open(&drive.dev,idepath,FA_WRITE | FA_READ,devopts))!=0){
-        printf("Device fail %s\n",err);
-    }else{
-       if (DEBUG)  printf("Device Opened\n");
-    }
-*/
-
 // LS
 
     if(scmd==CMDLS){
@@ -262,11 +291,9 @@ void DoData(void){
        printf("\n");
        state=SENDEND;
        scmd=CMDNONE;
-   }
+    }
    
 //COPYTO
-
-//void ReceiveData(void){
 
     if(scmd==CMDCOPYTO){
         if (DEBUG) printf("COPYTO\n");
@@ -340,6 +367,14 @@ void DoData(void){
         state=SENDEND;
         scmd=CMDNONE;
   }
+  
+//WATCH
+    if(scmd==CMDWATCH){
+      watch=Address;
+      state=SENDEND;
+      scmd=CMDNONE; 
+    }
+
 
   cpmUmount(&drive);
   Device_f_sync();   
@@ -403,11 +438,15 @@ void serialfile(void){
            break;
          case TEST:
            CMDTestCPM();   
+           break;
+         case WAITFORADDRESS:
+           WaitForAddress();  
+           break;
          case EXIT:
            state=WAITFORSTART;
            exit=1;  
          default:
-          break;
+           break;
      }
   }
   printf ("\n\r EXIT FILE MODE \n\r");
