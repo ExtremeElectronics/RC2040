@@ -36,6 +36,7 @@
 #define CMDRM 4
 #define CMDWHO 5
 #define CMDWATCH 6
+#define CMDTRACE 7
 
 //tokens
 #define StartToken "&&&-magic-XXX"
@@ -49,6 +50,7 @@
 #include "cpmls.c"
 
 extern uint16_t watch;
+extern  int trace;
 
 char buffer[20*1024];
 char linebuffer[1024];
@@ -80,10 +82,10 @@ void WaitForStart(void){
     if (DEBUG) printf("%s",linebuffer);
     strcpy(serr,"");
     if (strcmp(linebuffer,StartToken  ) == 0){
-      state=WAITFORCMD;
+        state=WAITFORCMD;
     }
     if (strcmp(linebuffer,"EXIT"  ) == 0){
-      state=EXIT;
+        state=EXIT;
     }
 
 }
@@ -93,102 +95,104 @@ void WaitForCMD(void){
     scanf("%1024s", linebuffer);
     if (DEBUG) printf("%s\n",linebuffer);
     if (strcmp(linebuffer,"LS")==0){
-       scmd=CMDLS;
-       state=WAITFORDRIVE;
+        scmd=CMDLS;
+        state=WAITFORDRIVE;
     }
     if (strcmp(linebuffer,"RM")==0){
-       scmd=CMDRM;
-       state=WAITFORDRIVE;
+        scmd=CMDRM;
+        state=WAITFORDRIVE;
     }
     if (strcmp(linebuffer,"COPYTO")==0){
-       scmd=CMDCOPYTO;
-       state=WAITFORDRIVE;
+        scmd=CMDCOPYTO;
+        state=WAITFORDRIVE;
     }
     if (strcmp(linebuffer,"COPYFROM")==0){
-       scmd=CMDCOPYFROM;
-       state=WAITFORDRIVE;
+        scmd=CMDCOPYFROM;
+        state=WAITFORDRIVE;
     }   
     if (strcmp(linebuffer,"TEST")==0){
-       scmd=TEST;
-       state=TEST;
+        scmd=TEST;
+        state=TEST;
     }
     if (strcmp(linebuffer,"WHO")==0){
-       printf("\nRC2040\n\n");
-       state=WAITFORSTART;
-       scmd=CMDNONE;
+        printf("\nRC2040\n\n");
+        state=WAITFORSTART;
+        scmd=CMDNONE;
     }
     if (strcmp(linebuffer,"WATCH")==0){
-       printf("\nRC2040\n\n");
-       state=WAITFORADDRESS;
-       scmd=CMDWATCH;
+        state=WAITFORADDRESS;
+        scmd=CMDWATCH;
     }
-
+    if (strcmp(linebuffer,"TRACE")==0){
+        state=WAITFORADDRESS;
+        scmd=CMDTRACE;
+    }
     if (strcmp(linebuffer,"EXIT")==0){
-       scmd=EXIT;
-       state=EXIT;
-       state=WAITFORSTART;
-       scmd=CMDNONE;
+        scmd=EXIT;
+        state=EXIT;
+        state=WAITFORSTART;
+        scmd=CMDNONE;
     }
 
 }
 
 void WaitForDrive(void){
-   printf("Drive:\n");
-   scanf("%1024s", linebuffer);
-   linebuffer[0]=toupper(linebuffer[0]);
-   if (DEBUG)   printf("%s\n",linebuffer);
-   if (linebuffer[0]>=DRIVEMIN && linebuffer[0]<=DRIVEMAX){
-       drivel=linebuffer[0];
-       if (scmd==CMDLS){
-         state=CHECK;
-     }else{
-         state=WAITFORFN;
-     }
-   }else{
-       sprintf(serr,"Drive out of range %c",drivel);
-       state=CHECK;
-   }  
+    printf("Drive:\n");
+    scanf("%1024s", linebuffer);
+    linebuffer[0]=toupper(linebuffer[0]);
+    if (DEBUG)   printf("%s\n",linebuffer);
+    if (linebuffer[0]>=DRIVEMIN && linebuffer[0]<=DRIVEMAX){
+        drivel=linebuffer[0];
+        if (scmd==CMDLS){
+            state=CHECK;
+        }else{
+            state=WAITFORFN;
+        }
+    }else{
+        sprintf(serr,"Drive out of range %c",drivel);
+        state=CHECK;
+    }  
 }
 
 
 void WaitForAddress(void){
-   printf("Address:\n");
-   scanf("%x", &Address);
-   if (DEBUG)   printf("%s\n",linebuffer);
-   if (Address<=0xfff && Address>=0){
-       state=CHECK;
-   }else{
-       sprintf(serr,"Address out of range %i",Address);
-       state=CHECK;
-   }
+    printf("Address:\n");
+    scanf("%x", &Address);
+    if (DEBUG)   printf("%s\n",linebuffer);
+    if (Address<=0xfff && Address>=0){
+        state=CHECK;
+    }else{
+        sprintf(serr,"Address out of range %i",Address);
+        state=CHECK;
+    }
 }
 
 
 
 
 void WaitForFN(void){
-   printf("Filename:\n");
-   scanf("%20s", linebuffer);
-   if (DEBUG)   printf("FN:%s\n",linebuffer);
-   int e=0;
-   if(strlen(linebuffer)>12){
-       sprintf(serr,"Filename too long");
-       e=1;
-   }
-   int i, count;
-   for (i=0, count=0; linebuffer[i]; i++) count += (linebuffer[i] == '.');
-   if(count>1){
-       sprintf(serr,"toomany .'s");
-       e=1;
-   }   
-   if (e==0){
-       int pos;
-       char dot[] = ".";
-       pos=strcspn(linebuffer,dot);
-       if(pos==0){
-         sprintf(serr,"%s no .",serr);
-         e=1;
-       }else{
+    printf("Filename:\n");
+    scanf("%20s", linebuffer);
+    if (DEBUG)   printf("FN:%s\n",linebuffer);
+    int e=0;
+    if(strlen(linebuffer)>12){
+        sprintf(serr,"Filename too long");
+        e=1;
+    }
+    int i, count;
+    for (i=0, count=0; linebuffer[i]; i++) count += (linebuffer[i] == '.');
+    if(count>1){
+        sprintf(serr,"toomany .'s");
+        e=1;
+    }   
+    if (e==0){
+        int pos;
+        char dot[] = ".";
+        pos=strcspn(linebuffer,dot);
+        if(pos==0){
+            sprintf(serr,"%s no .",serr);
+            e=1;
+        }else{
             if(pos>8){
                 sprintf(serr,"$s FN too long before .",err);
                 e=1;
@@ -197,66 +201,60 @@ void WaitForFN(void){
                 sprintf(serr,"%s FN too long [%i] after ." ,err,strlen(linebuffer)-pos);
                 e=1;
             }
-       }   
-       if (e==0){
-           strcpy(cfilename,linebuffer);
-           if (DEBUG)  printf("filename:!%s!",cfilename);
-       }else{
-           if (DEBUG)   printf("Filename error %s",serr);
-       }  
-   }
-   state=CHECK;
+        }   
+        if (e==0){
+            strcpy(cfilename,linebuffer);
+            if (DEBUG)  printf("filename:!%s!",cfilename);
+        }else{
+            if (DEBUG)   printf("Filename error %s",serr);
+        }  
+    }
+    state=CHECK;
 }
 
 void Check(void){
-  if(strlen(serr)==0){
-      printf("OK:\n");
-      if(scmd==CMDLS) state=DODATA;
-      if(scmd==CMDCOPYTO) state=DODATA;
-      if(scmd==CMDCOPYFROM) state=DODATA;
-      if(scmd==TEST) state=TEST;
-      if(scmd==CMDRM) state=DODATA;
-      if(scmd==CMDWATCH) state=DODATA;
-  }else{
-      printf("ERROR: %s\n",serr);
-      state=WAITFORSTART;
-      scmd=CMDNONE; 
-  }
+    if(strlen(serr)==0){
+        printf("OK:\n");
+        if(scmd==CMDLS) state=DODATA;
+        if(scmd==CMDCOPYTO) state=DODATA;
+        if(scmd==CMDCOPYFROM) state=DODATA;
+        if(scmd==TEST) state=TEST;
+        if(scmd==CMDRM) state=DODATA;
+        if(scmd==CMDWATCH) state=DODATA;
+        if(scmd==CMDTRACE) state=DODATA;
+        
+    }else{
+        printf("ERROR: %s\n",serr);
+        state=WAITFORSTART;
+        scmd=CMDNONE; 
+    }
 }
 
 
 void ReceiveEnd(void){
-   printf("File Received\n");
-   state=WAITFORSTART;
-   scmd=CMDNONE;
+    printf("File Received\n");
+    state=WAITFORSTART;
+    scmd=CMDNONE;
 }
 
 void CMDTestCPM(void){
-   if (DEBUG) printf("TEST\n");
-/*
-   if ((err=Device_f_open(&drive.dev,idepath,FA_WRITE | FA_READ,devopts))!=0){
-       printf("Device fail %s\n",err);
-   }else{
-      if (DEBUG)  printf("Device Opened\n");
-   }
-*/
-   sprintf(format,"rc2040imgd");
+    if (DEBUG) printf("TEST\n");
+    sprintf(format,"rc2040imgd");
 
-   if (cpmReadSuper(&drive,&root,format)==-1){
-       printf("cannot read superblock (%s) - stopping\n",boo);
-       while(1);
-    }
+    if (cpmReadSuper(&drive,&root,format)==-1){
+        printf("cannot read superblock (%s) - stopping\n",boo);
+        while(1);
+     }
 
-    if(DEBUG)printf("CPM Read Super\n");
+     if(DEBUG)printf("CPM Read Super\n");
 
-    sprintf(cfilename,"TESTTEST.TXT");
+     sprintf(cfilename,"TESTTEST.TXT");
 
-    TestToCPM(&root,cfilename);
-    state=RECEIVEEND;
+     TestToCPM(&root,cfilename);
+     state=RECEIVEEND;
 
-    cpmUmount(&drive);  
-    Device_f_sync();
-//    Device_f_close(&drive.dev);
+     cpmUmount(&drive);  
+     Device_f_sync();
 }
 
 void DoData(void){
@@ -366,7 +364,7 @@ void DoData(void){
 
         state=SENDEND;
         scmd=CMDNONE;
-  }
+    }
   
 //WATCH
     if(scmd==CMDWATCH){
@@ -375,10 +373,15 @@ void DoData(void){
       scmd=CMDNONE; 
     }
 
+//TRACE
+    if(scmd==CMDTRACE){
+      trace=Address;
+      state=SENDEND;
+      scmd=CMDNONE; 
+    }
 
   cpmUmount(&drive);
   Device_f_sync();   
-//  Device_f_close(&drive.dev);
    
 }
 

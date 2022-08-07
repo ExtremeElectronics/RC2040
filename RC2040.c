@@ -10,10 +10,6 @@
  *	Known bugs
  *	Not convinced we have all the INT clear cases right for SIO error
  *
- *	The SC121 just an initial sketch for playing with IM2 and the
- *	relevant peripherals. I'll align it properly with the real thing as more
- *	info appears.
- *
  */
 
 #include <stdio.h>
@@ -38,7 +34,6 @@
 //
 #include "hw_config.h"
 
-#include <unistd.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -116,6 +111,10 @@ uint8_t NeoPortData;
 uint8_t NeoPortDataReady=0;
 uint8_t pixels[NUM_PIXELS][3];
 uint8_t pixelspallette[256][3];
+
+//watch
+uint16_t watch= 0x0000;
+
 
 //RAMROM
 static uint8_t ram[0x10000]; //64k
@@ -284,12 +283,39 @@ volatile int emulator_done;
 #define TRACE_PS2	0x200000
 #define TRACE_ACIA	0x400000
 
-static int trace = 00000;
+int trace = 00000;
+//static int trace = 00000;
 
 static void reti_event(void);
 
+static unsigned int nbytes;
+
+static void z80_vardump(void)
+{
+	static uint32_t lastpc = -1;
+//	char buf[256];
+
+	nbytes = 0;
+
+	lastpc = cpu_z80.M1PC;
+	printf( "%04X: ", lastpc);
+//	z80_disasm(buf, lastpc);
+	while(nbytes++ < 6)
+		printf( "   ");
+//	printf( "%-16s ", buf);
+	printf( "[ %02X:%02X %04X %04X %04X %04X %04X %04X ]\n",
+		cpu_z80.R1.br.A, cpu_z80.R1.br.F,
+		cpu_z80.R1.wr.BC, cpu_z80.R1.wr.DE, cpu_z80.R1.wr.HL,
+		cpu_z80.R1.wr.IX, cpu_z80.R1.wr.IY, cpu_z80.R1.wr.SP);
+	sleep_ms(2);
+}
+
+
 static uint8_t mem_read0(uint16_t addr)
 {
+
+      if (watch>0 && addr==watch){        z80_vardump();      }
+
 
       if(romdisable){
           if (trace & TRACE_MEM) printf( "R%04X[%02X]\n", addr, ram[addr]);
@@ -303,6 +329,8 @@ static uint8_t mem_read0(uint16_t addr)
             return ram[addr];
           }
       }
+      
+      
 }
 
 static void mem_write0(uint16_t addr, uint8_t val)
@@ -359,7 +387,6 @@ void mem_write(int unused, uint16_t addr, uint8_t val)
 }
 
 
-static unsigned int nbytes;
 
 
 
@@ -534,8 +561,7 @@ unsigned int next_char(void)
         c=getUSBcharwaiting();
     }
 
-    if (c == 0x0A)
-        c = '\r';
+//    if (c == 0x0A) c = '\r';
 //    putchar(c);
     return c;
 }
@@ -2056,7 +2082,6 @@ void Core1Main(void){
 
 
 
-
 //#######################################################################################################
 //#                                      MAIN                                                           #
 //#######################################################################################################
@@ -2183,6 +2208,7 @@ int main(int argc, char *argv[])
 
           // Trace enable from inifile
 	  trace = iniparser_getint(ini, "DEBUG:trace",0 );
+	  watch = iniparser_getint(ini, "DEBUG:watch",0 );
 
 	  // PORT
 	  PIOA = iniparser_getint(ini, "[PORT]:pioa",0 );
@@ -2390,6 +2416,7 @@ int main(int argc, char *argv[])
                         PrintToSelected("\r\n ########################### \n\r",0);
                         PrintToSelected(" ####### Z80 RESET ######### \n\r",0);
                         PrintToSelected(" ########################### \n\n\r",0);
+			z80_vardump();                        
                         Z80RESET(&cpu_z80);
                         while(gpio_get(RESETBUT)==0);
                     }
@@ -2408,18 +2435,10 @@ int main(int argc, char *argv[])
 
 		for (i = 0; i < 40; i++) {  //origional
 			int j;
-//			for (j = 0; j < 100; j++) {//origional
-			for (j = 0; j < 50; j++) {
-		   	    Z80ExecuteTStates(&cpu_z80, (tstate_steps + 5)/ 10);
-			}
-			if (acia)
-				acia_timer(acia);
-			if (sio2)
-				sio2_timer();
-			if (have_16x50)
-				uart_event(&uart[0]);
-			/* We want to run UI events regularly it seems */
-//			ui_event();
+			for (j = 0; j < 50; j++) { Z80ExecuteTStates(&cpu_z80, (tstate_steps + 5)/ 10);	}
+			if (acia) acia_timer(acia);
+			if (sio2) sio2_timer();
+			if (have_16x50)	uart_event(&uart[0]);
 		}
 		
 		//fake USB char in interrupts
