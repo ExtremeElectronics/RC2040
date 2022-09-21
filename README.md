@@ -63,6 +63,8 @@ SD card images (a "get you started" is available in the [SD Card Contents] sub f
 
 - https://github.com/RC2014Z80/RC2014/tree/master/CPM
 
+- also note that the file format is exactly the same as the RC2014 Micro SD Card module  https://z80kits.com/shop/micro-sd-card-module/ so you can swap your SD card from the RC2040 into an RC2014 and have the same content.
+
 ### CPM manual
 
 - http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
