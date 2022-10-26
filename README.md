@@ -110,6 +110,10 @@ then set the n'th LED to that colour by writing n to port 67
 
 see Neopixel.md for more detail
 
+### Fast File Serial Transfer (FFS)
+Fast file serial transfer is detailed in the document https://github.com/ExtremeElectronics/RC2040/blob/main/SerialCPMtools.md
+This allows direct manipulation of the CPM system on the SD card without stopping the emulation. Speeds of 500mZ/s* are achevable 
+**mZ/s milli Zorks/second = time to transfer 1/1000th of Zork1 in one second.
 
 ## Progress
 
