@@ -1,8 +1,8 @@
 # Experimental Fast file transfer 
 
-### This is _very_ experimental at the moment
+### This is experimental, but relativly stable at the moment
 
-Currently this is only supported with the RC2040 PCB from ExtremeKits. https://extkits.co.uk/product/rc2040/
+Currently this is only supported with the RC2040 PCB from ExtremeKits. https://extkits.co.uk/product/rc2040/ and some disk commands can be accessed if you are using the SD card module from z80kits, https://z80kits.com/shop/micro-sd-card-module/
 
 The ideal setup would be using the serial port for the terminal, and the USB for file transfer. but you should be able to use just the USB
 
