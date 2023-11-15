@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
+
 #define DEBUG 0
 
 //serial states
@@ -20,9 +21,7 @@
 #define SENDEND 8
 #define RECEIVEEND 9
 #define TEST 10
-#define WHO 12
 #define EXIT 99
-//#define CMDRM 11
 
 //drives
 #define DRIVEMAX 'P'
@@ -37,6 +36,9 @@
 #define CMDWHO 5
 #define CMDWATCH 6
 #define CMDTRACE 7
+#define CMDDUMP 8
+#define CMDDISSEMBLE 9
+#define CMDPROGRAM 10
 
 //tokens
 #define StartToken "&&&-magic-XXX"
@@ -73,7 +75,58 @@ char serr[255];
 const char * err;
 char *image;
 
-int Address;
+unsigned int Address;
+unsigned int Size;
+
+extern void DumpMemoryUSB(unsigned int FromAddr, int dumpsize);
+extern void DessembleMemoryUSB(unsigned int FromAddr, int dumpsize);
+extern uint8_t ram[];
+extern uint8_t rom[];
+
+
+
+/* Copy from Base64 chunks to RAM
+ *
+ *
+*/
+
+
+void Base64ToMEM(int Address){
+
+      int chunk,x,y;
+      char encbuffer[16*1024+4];  //faster?
+      y=0;
+      
+      do{
+              printf("Chunksize:\n");
+              scanf("%d", &chunk);
+              if (DEBUG) printf("Chunk:%i",chunk);
+              if(chunk>0){
+                  printf("Data:\n");
+                  scanf("%20000s",encbuffer);
+                  if (DEBUG) printf("Data:%s",encbuffer);
+                  size_t decode_size = strlen(encbuffer);
+                  char * decoded_data = base64_decode(encbuffer, decode_size, &decode_size);
+                  if (DEBUG) printf("%s\n\r",decoded_data);
+                  if (DEBUG) printf("Write to %i %i %i \n",Address,chunk,decode_size);
+                  for(x=0;x<decode_size;x++){
+                     //write to ram and rom
+                     ram[Address+x+y]=decoded_data[x];
+                     rom[Address+x+y]=decoded_data[x];
+                     printf("%i ",decoded_data[x]);
+                  }
+                  y=y+x;                     
+                  free(decoded_data);
+
+                }
+                printf("OK:\n");
+      } while (chunk>0);
+
+
+}
+
+
+
 
 
 void WaitForStart(void){
@@ -127,6 +180,20 @@ void WaitForCMD(void){
         state=WAITFORADDRESS;
         scmd=CMDTRACE;
     }
+    if (strcmp(linebuffer,"DUMP")==0){
+        state=WAITFORADDRESS;
+        scmd=CMDDUMP;
+    }
+    if (strcmp(linebuffer,"PROGRAM")==0){
+        state=WAITFORADDRESS;
+        scmd=CMDPROGRAM;
+    }
+
+    if (strcmp(linebuffer,"DISSEMBLE")==0){
+        state=WAITFORADDRESS;
+        scmd=CMDDISSEMBLE;
+    }
+
     if (strcmp(linebuffer,"EXIT")==0){
         scmd=EXIT;
         state=EXIT;
@@ -159,10 +226,22 @@ void WaitForAddress(void){
     printf("Address:\n");
     scanf("%x", &Address);
     if (DEBUG)   printf("%s\n",linebuffer);
-    if (Address<=0xfff && Address>=0){
+    if (Address<=0xffff && Address>=0){
         state=CHECK;
     }else{
         sprintf(serr,"Address out of range %i",Address);
+        state=CHECK;
+    }
+}
+
+void WaitForSize(void){
+    printf("Size:\n");
+    scanf("%x", &Size);
+    if (DEBUG)   printf("%s\n",linebuffer);
+    if (Size+Address<=0xffff && Size>=0){
+        state=CHECK;
+    }else{
+        sprintf(serr,"Size/Address out of range %i",Address);
         state=CHECK;
     }
 }
@@ -222,7 +301,9 @@ void Check(void){
         if(scmd==CMDRM) state=DODATA;
         if(scmd==CMDWATCH) state=DODATA;
         if(scmd==CMDTRACE) state=DODATA;
-        
+        if(scmd==CMDDUMP) state=DODATA;
+        if(scmd==CMDDISSEMBLE) state=DODATA;
+        if(scmd==CMDPROGRAM) state=DODATA;        
     }else{
         printf("ERROR: %s\n",serr);
         state=WAITFORSTART;
@@ -236,7 +317,7 @@ void ReceiveEnd(void){
     state=WAITFORSTART;
     scmd=CMDNONE;
 }
-
+/*
 void CMDTestCPM(void){
     if (DEBUG) printf("TEST\n");
     sprintf(format,"rc2040imgd");
@@ -256,7 +337,7 @@ void CMDTestCPM(void){
      cpmUmount(&drive);  
      Device_f_sync();
 }
-
+*/
 void DoData(void){
    char * data;
      char filespec[2+8+1+3+1];
@@ -368,6 +449,7 @@ void DoData(void){
   
 //WATCH
     if(scmd==CMDWATCH){
+      if (DEBUG) printf("WATCH\n");
       watch=Address;
       state=SENDEND;
       scmd=CMDNONE; 
@@ -375,10 +457,35 @@ void DoData(void){
 
 //TRACE
     if(scmd==CMDTRACE){
+      if (DEBUG) printf("TRACE\n");
       trace=Address;
       state=SENDEND;
       scmd=CMDNONE; 
     }
+
+//DODUMP
+  if(scmd==CMDDUMP){
+    if (DEBUG) printf("DUMP\n");
+    DumpMemoryUSB(Address, 512);
+    state=SENDEND;
+    scmd=CMDNONE;
+  }
+  
+//PROGRAM  
+  if(scmd==CMDPROGRAM){
+    if (DEBUG) printf("PROGRAM\n");
+    Base64ToMEM(Address);
+    state=RECEIVEEND;
+    scmd=CMDNONE;
+
+  }
+  
+//Disemble  
+  if(scmd==CMDDISSEMBLE){
+    DessembleMemoryUSB(Address, 64);
+    state=SENDEND;
+    scmd=CMDNONE;
+  }
 
   cpmUmount(&drive);
   Device_f_sync();   
@@ -439,9 +546,9 @@ void serialfile(void){
          case RECEIVEEND:
            ReceiveEnd();
            break;
-         case TEST:
-           CMDTestCPM();   
-           break;
+//         case TEST:
+//           CMDTestCPM();   
+//           break;
          case WAITFORADDRESS:
            WaitForAddress();  
            break;
@@ -455,3 +562,6 @@ void serialfile(void){
   printf ("\n\r EXIT FILE MODE \n\r");
 
 }
+
+
+

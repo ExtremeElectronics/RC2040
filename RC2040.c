@@ -117,13 +117,14 @@ uint16_t watch= 0x0000;
 
 
 //RAMROM
-static uint8_t ram[0x10000]; //64k
-static uint8_t rom[0x10000]; //64k
+uint8_t ram[0x10000]; //64k
+uint8_t rom[0x10000]; //64k
 
 //rom setup
 static uint8_t romdisable=0; //1 disables rom, making ram 0-64k
 static uint16_t pagesize=0x8000; //32k rom
 int rombank = 4; //default to CPM on default rom image
+static uint8_t overridejumpers=0; //take address from ini if set in ini
 
 //max files for ls on SD card.
 #define MaxBinFiles 100
@@ -246,7 +247,7 @@ static uint8_t have_16x50;
 static uint8_t fast = 0;
 static uint8_t int_recalc = 0;
 
-static uint16_t tstate_steps = 365;	/* RC2014 speed */
+static uint16_t tstate_steps = 500;	/* RC2014 core v peritherals - higher z80 - lower pepherals  */
 
 /* IRQ source that is live in IM2 */
 static uint8_t live_irq;
@@ -313,10 +314,6 @@ static void z80_vardump(void)
 
 static uint8_t mem_read0(uint16_t addr)
 {
-
-      if (watch>0 && addr==watch){        z80_vardump();      }
-
-
       if(romdisable){
           if (trace & TRACE_MEM) printf( "R%04X[%02X]\n", addr, ram[addr]);
           return ram[addr];
@@ -328,9 +325,7 @@ static uint8_t mem_read0(uint16_t addr)
               if (trace & TRACE_MEM)  printf( "R%04X[%02X]\n", addr, ram[addr]);
             return ram[addr];
           }
-      }
-      
-      
+      }     
 }
 
 static void mem_write0(uint16_t addr, uint8_t val)
@@ -354,6 +349,7 @@ static void mem_write0(uint16_t addr, uint8_t val)
 
 uint8_t do_mem_read(uint16_t addr, int quiet)
 {
+      if (watch>0 && addr==watch){        z80_vardump();      }
 	return mem_read0(addr);
 }
 
@@ -385,9 +381,6 @@ void mem_write(int unused, uint16_t addr, uint8_t val)
 {
 	 mem_write0(addr, val);
 }
-
-
-
 
 
 uint8_t z80dis_byte(uint16_t addr)
@@ -480,22 +473,6 @@ int testUARTcharwaiting(){
       return charinUART!=charoutUART;
 }
 
-/*
-int testUARTcharwaiting(){
-    char c = getchar_timeout_us(0); 
-    if(c!=ENDSTDIN){
-        //printf("%02X ",c);
-        charbufferUART[charinUART]=c;
-        charinUART++;
-        if (charinUART==INBUFFERSIZE){
-            charinUART=0;
-        }
-    }
-  
-    return charinUART!=charoutUART;
-
-}
-*/
 char getUARTcharwaiting(void){
     char c=0;
     if(charinUART!=charoutUART){
@@ -1253,7 +1230,7 @@ static uint8_t PIOA_read(void){
        gpio_set_dir(PIOAp[a],GPIO_IN);
        gpio_pull_up(PIOAp[a]);
     }
-    sleep_ms(1);
+    sleep_us(200);
     //get bits disable pullups
     for (a=0;a<8;a++){   
        if(gpio_get(PIOAp[a]))r=r+v;
@@ -1558,7 +1535,7 @@ void CopyRamRom2Ram(int FromAddr, int ToAddr, int copysize, int fromram, int tor
     }
 }
 
-void DumpRamRom(int FromAddr, int dumpsize,int dram){
+void DumpRamRom(unsigned int FromAddr, int dumpsize,int dram){
   int rc=0;
   int a;
   if(dram){
@@ -1586,8 +1563,51 @@ void DumpRamRom(int FromAddr, int dumpsize,int dram){
 }
 
 
+void DessembleMemoryUSB(unsigned int FromAddr, int dumpsize){
+   int a=0;
+   char buf[32];
+   while(a<dumpsize){
+       printf( "%04X: ", a+FromAddr);
+       //c=mem_read0(a+FromAddr);
+       nbytes=0;
+       z80_disasm(buf, a+FromAddr);
+       printf("%s\n\r",buf);
+       a=a+nbytes;
+   }
 
-void DumpMemory(int FromAddr, int dumpsize,FRESULT fr){
+}
+
+
+//dumpmemory to USB for serial dump command
+void DumpMemoryUSB(unsigned int FromAddr, int dumpsize){
+    int rc=0;
+    int a;
+    const unsigned char width=16;
+    unsigned char c;
+    char string[width+1];
+    string[width]=0;
+    printf("%04X ",FromAddr);
+    for(a=0;a<dumpsize;a++){
+       c=mem_read0(a+FromAddr);
+       printf("%02x ",c);
+       string[rc % width]='.';
+       if ((c>=' ') && (c<='~')) string[rc % width ]=c;
+       rc++;
+       if(rc % width==0){
+           printf(" %s ",string);
+           printf("\r\n%04X ",rc+FromAddr);
+       }else{
+           if (rc % 8==0){
+              printf(" ");
+           }
+       }
+    }
+
+}
+
+
+// dump memory image to console and sd if fr is set
+void DumpMemory(unsigned int FromAddr, int dumpsize,FRESULT fr){
   int rc=0;
   int a;
   char temp[128];
@@ -1600,7 +1620,7 @@ void DumpMemory(int FromAddr, int dumpsize,FRESULT fr){
   }
   sprintf(temp,"MEM %04X ",FromAddr);
   PrintToSelected(temp,0);
-  WriteRamToSD(fr,"DUMP.BIN",0x10000 );
+  if (fr!=0) WriteRamToSD(fr,"DUMP.BIN",0x10000 );
   for(a=0;a<dumpsize;a++){
       sprintf(temp,"%02x ",mem_read0(a+FromAddr));
       PrintToSelected(temp,0);
@@ -1779,7 +1799,6 @@ void PlayAllophone(int al){
     //and play
     for(b=0;b<s;b++){
         v=allophoneindex[al][b]; //get delta value
-//        sleep_us(PWMrate);
         sleep_us(pwmr);
         pwm_set_both_levels(PWMslice,v,v);
 
@@ -2110,6 +2129,7 @@ int main(int argc, char *argv[])
 	int SerialType =0; //ACIA=0 SIO=1
 
         char RomTitle[200];
+
         
 //over clock done in ini parcer now
         set_sys_clock_khz(250000, true);
@@ -2170,6 +2190,9 @@ int main(int argc, char *argv[])
 	  ini = iniparser_load(fr, ini_name);
 	  //iniparser_dump(ini, stdout);
 
+	  //override Jumpers
+	  overridejumpers=iniparser_getint(ini, "ROM:ovjump", 0);
+	  
 	  // ROM select from ini
 	  rombank=0;
 	  if (iniparser_getint(ini, "ROM:a13", 0)) rombank+=1;
@@ -2234,8 +2257,12 @@ int main(int argc, char *argv[])
 
 
 //IF switches link present, get switches and select rom bank and UART from switches
-          rombank=GetRomSwitches();
-                  
+          if (overridejumpers==0){
+            rombank=GetRomSwitches();
+          }else{
+            printf("Override jumpers set in INI \n\r");
+          }  
+                 
         }else{
             uart_puts(UART_ID,"No  \n\r");
             printf("SD INIT OK \n\r",1);
@@ -2247,6 +2274,10 @@ int main(int argc, char *argv[])
             //if usb wait for usb to connect.
             while (!tud_cdc_connected()) { sleep_ms(100);  }
         }
+
+//compiled time
+	printf("\n\rCompiled %s %s\n",__DATE__,__TIME__);
+
 
         
 
@@ -2264,7 +2295,7 @@ int main(int argc, char *argv[])
         sprintf(RomTitle, "\n\r  /         Derek Woodroffe          |");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r |  O        Extreme Kits            |");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r |     Kits at extkits.uk/RC2040     |");PrintToSelected(RomTitle,0);
-        sprintf(RomTitle, "\n\r |               2022                |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r |               2023                |");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r |___________________________________|");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,0);
 
@@ -2314,7 +2345,7 @@ int main(int argc, char *argv[])
 
         have_ctc = 0;
         have_16x50 = 0;
-	tstate_steps = 500;
+//	tstate_steps = 500;
 
   	if (ide == 1 ) {
 		ide0 = ide_allocate("cf");
@@ -2402,7 +2433,7 @@ int main(int argc, char *argv[])
 
 	/* We run 7372000 t-states per second */
 	/* We run 365 cycles per I/O check, do that 50 times then poll the
-	   slow stuff and nap for 20ms to get 50Hz on the TMS99xx */
+	   slow stuff*/
 	while (!emulator_done) {
 		int i;
 		/* 36400 T states for base RC2014 - varies for others */
@@ -2434,11 +2465,11 @@ int main(int argc, char *argv[])
                 }
 
 		for (i = 0; i < 40; i++) {  //origional
-			int j;
-			for (j = 0; j < 50; j++) { Z80ExecuteTStates(&cpu_z80, (tstate_steps + 5)/ 10);	}
-			if (acia) acia_timer(acia);
-			if (sio2) sio2_timer();
-			if (have_16x50)	uart_event(&uart[0]);
+		    int j;
+		    for (j = 0; j < 50; j++) { Z80ExecuteTStates(&cpu_z80, (tstate_steps + 5)/ 10);	}
+		    if (acia) acia_timer(acia);
+		    if (sio2) sio2_timer();
+		    if (have_16x50) uart_event(&uart[0]);
 		}
 		
 		//fake USB char in interrupts
