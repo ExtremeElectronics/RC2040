@@ -65,6 +65,8 @@ SD card images (a "get you started" is available in the [SD Card Contents] sub f
 
 - also note that the file format is exactly the same as the RC2014 Micro SD Card module  https://z80kits.com/shop/micro-sd-card-module/ so you can swap your SD card from the RC2040 into an RC2014 and have the same content.
 
+- More information regarding the CPMIDE.id file can be found here https://github.com/ExtremeElectronics/Pico-SD--IDE-interface--for-Rc2014/tree/main/ID-File-Structure
+
 ### CPM manual
 
 - http://www.cpm.z80.de/manuals/archive/cpm22htm/index.htm
