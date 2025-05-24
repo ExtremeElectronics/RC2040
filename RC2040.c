@@ -423,9 +423,22 @@ static void z80_trace(unsigned unused)
 
 
 
-// experimental usb char in circular buffer
+/*
 int intUSBcharwaiting(){
 // no interrupt or waiting check so use unblocking getchar, adds to buff if available
+    char c = getchar_timeout_us(0);
+    if(c!=ENDSTDIN){;
+        charbufferUSB[charinUSB]=c;
+        charinUSB++;
+        if (charinUSB==INBUFFERSIZE){
+            charinUSB=0;
+        }
+    }
+    return charinUSB!=charoutUSB;
+}
+*/
+int intUSBcharwaiting(){
+// no interrupt or waiting check so use unblocking getchar, adds to buff if avai
     int c = getchar_timeout_us(0);
 //    if(c!=ENDSTDIN){
       if(c>=0){ // fix for SDK2 by djrose80
