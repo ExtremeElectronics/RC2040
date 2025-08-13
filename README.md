@@ -35,6 +35,9 @@ there is also a script .makeboth that will cmake/make for both RC2040 and RC2350
 
 For more details look at [Compiling.md](Compiling.md)
 
+##Binary Files
+there are two UF2 files one for a Pico (RC2040.uf2) and one for the Pico2 (RC2040P2.uf2)
+
 ## SD card connection to the Pico
 
 Details are in the Circuit diagram folder. Switches and buttons are not required. Just an SD card that can be easily attached using an old SD adapter. (diagram for this in the Circuit diagram folder)
