@@ -59,3 +59,7 @@ git pull
 git submodule update
 
 Thanks to https://github.com/guidol70 for the detail
+
+
+from the RC2040 directory there is a script that will build the RC2040 for both pico RC2350 and RC2040 makeboth.sh
+
