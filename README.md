@@ -1,6 +1,6 @@
 # RC2040
 
-## Z80 CP/M 80 emulation of RC2014 using the RP2040 (PI PICO) processor.
+## Z80 CP/M 80 emulation of RC2014 using the RP2040 (PI PICO) or RP2350 (PI PICO2) processor.
 ## and emulation of a handfull of hardware peripherals. 
 
 Initial aim was to get the [EtchedPixels](https://github.com/EtchedPixels) Linux based Z80 emulation including an SD Card based IDE running on a Pi Pico as a standalone.
@@ -31,6 +31,7 @@ Clone this RC2040 git into a subdirectory under the pico one then,
   cmake ..
   make
  ```
+there is also a script .makeboth that will cmake/make for both RC2040 and RC2350
 
 For more details look at [Compiling.md](Compiling.md)
 
@@ -66,6 +67,8 @@ SD card images (a "get you started" is available in the [SD Card Contents] sub f
 - also note that the file format is exactly the same as the RC2014 Micro SD Card module  https://z80kits.com/shop/micro-sd-card-module/ so you can swap your SD card from the RC2040 into an RC2014 and have the same content.
 
 - More information regarding the CPMIDE.id file can be found here https://github.com/ExtremeElectronics/Pico-SD--IDE-interface--for-Rc2014/tree/main/ID-File-Structure
+
+- Note: see https://github.com/ExtremeElectronics/RC2040-ROMWBW for a similar system for RomWBW
 
 ### CPM manual
 
