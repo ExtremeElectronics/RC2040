@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include "iniparser.h"
 //sd card
-#include  "f_util.h"
+//#include  "f_util.h"
 #include "ff.h"
 /*---------------------------- Defines -------------------------------------*/
 #define ASCIILINESZ         (1024)

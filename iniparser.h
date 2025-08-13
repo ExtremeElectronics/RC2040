@@ -19,7 +19,7 @@
 #include <string.h>
 
 //sd card
-#include  "f_util.h"
+//#include  "f_util.h"
 #include "ff.h"
 
 

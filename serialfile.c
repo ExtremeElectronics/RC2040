@@ -4,8 +4,9 @@
 #include <stdint.h>
 #include <unistd.h>
 
-
 #define DEBUG 0
+//include from RC2040
+#include "RC2040.h"
 
 //serial states
 #define WAITFORSTART 0
@@ -46,7 +47,6 @@
 
 #define NOT_FOUND -1
 
-
 //cpmtools
 #include "cpmcp.c"
 #include "cpmls.c"
@@ -54,7 +54,8 @@
 extern uint16_t watch;
 extern  int trace;
 
-char buffer[20*1024];
+//was 20*
+char buffer[10*1024];
 char linebuffer[1024];
 char cfilename[20];
 int state=0;
@@ -80,16 +81,11 @@ unsigned int Size;
 
 extern void DumpMemoryUSB(unsigned int FromAddr, int dumpsize);
 extern void DessembleMemoryUSB(unsigned int FromAddr, int dumpsize);
-extern uint8_t ram[];
-extern uint8_t rom[];
-
-
 
 /* Copy from Base64 chunks to RAM
  *
  *
 */
-
 
 void Base64ToMEM(int Address){
 
@@ -103,16 +99,15 @@ void Base64ToMEM(int Address){
               if (DEBUG) printf("Chunk:%i",chunk);
               if(chunk>0){
                   printf("Data:\n");
-                  scanf("%20000s",encbuffer);
+                  scanf("%10000s",encbuffer);
                   if (DEBUG) printf("Data:%s",encbuffer);
                   size_t decode_size = strlen(encbuffer);
                   char * decoded_data = base64_decode(encbuffer, decode_size, &decode_size);
                   if (DEBUG) printf("%s\n\r",decoded_data);
                   if (DEBUG) printf("Write to %i %i %i \n",Address,chunk,decode_size);
                   for(x=0;x<decode_size;x++){
-                     //write to ram and rom
-                     ram[Address+x+y]=decoded_data[x];
-                     rom[Address+x+y]=decoded_data[x];
+                     //write to ram
+                     mem_write0(Address+x+y,decoded_data[x]);
                      printf("%i ",decoded_data[x]);
                   }
                   y=y+x;                     
@@ -121,13 +116,7 @@ void Base64ToMEM(int Address){
                 }
                 printf("OK:\n");
       } while (chunk>0);
-
-
 }
-
-
-
-
 
 void WaitForStart(void){
     printf("\nStart?:\n");

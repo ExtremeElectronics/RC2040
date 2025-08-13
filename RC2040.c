@@ -3,14 +3,12 @@
  *
  *	Z80 at 7.372MHz
  *	Zilog SIO/2 at 0x80-0x83
- *	Motorola 6850 repeats all over 0x40-0x7F (not recommended)
  *	IDE at 0x10-0x17 no high or control access
  *	16550A at 0xA0
  *
- *	Known bugs
- *	Not convinced we have all the INT clear cases right for SIO error
  *
  */
+
 
 #include <stdio.h>
 
@@ -25,15 +23,8 @@
 #include "dictionary.h"
 #include "iniparser.h"
 
-
 //sd card reader
-#include "f_util.h"
 #include "ff.h"
-#include "pico/stdlib.h"
-#include "rtc.h"
-//
-#include "hw_config.h"
-
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -50,9 +41,10 @@
 
 #include "acia.h"
 #include "ide.h"
-//#include "ppide.h"
 #include "z80dma.h"
 #include "z80dis.h"
+
+#include "malloc.h" // needed for memory free calculation
 
 //ide file handles
 FIL fili;
@@ -69,11 +61,16 @@ FIL fild;
 //pico SDK includes
 #include "hardware/pwm.h"
 
+
 //sp0256al2 includes
 #include "allophones.c"
 #include "allophoneDefs.h"
 #define MAXALLOPHONE 64
+
 //sound 
+//#include "sounds.c"
+volatile uint8_t playing_disk=1; 
+
 //must be pins on the same slice
 #define soundIO1 15
 #define soundIO2 14
@@ -91,7 +88,6 @@ volatile static uint8_t SPO256FreqPortData=90;
 uint8_t BeepPort=0x29;
 volatile static uint8_t BeepDataOut;
 volatile static uint8_t BeepDataReady=0;
-
 
 //NeoPixel
 #include "hardware/pio.h"
@@ -115,8 +111,8 @@ uint8_t pixelspallette[256][3];
 //watch
 uint16_t watch= 0x0000;
 
-
 //RAMROM
+
 uint8_t ram[0x10000]; //64k
 uint8_t rom[0x10000]; //64k
 
@@ -125,10 +121,6 @@ static uint8_t romdisable=0; //1 disables rom, making ram 0-64k
 static uint16_t pagesize=0x8000; //32k rom
 int rombank = 4; //default to CPM on default rom image
 static uint8_t overridejumpers=0; //take address from ini if set in ini
-
-//max files for ls on SD card.
-#define MaxBinFiles 100
-char BinFiles[MaxBinFiles];
 
 /* use stdio for errors via usb uart */
 /* use 0=UART or 1=USB for serial comms */
@@ -160,7 +152,6 @@ int have_acia = 0;
 struct acia *acia;
 static uint8_t acia_narrow;
 
-
 //serial in circular buffer
 #define INBUFFERSIZE 10000
 static char charbufferUART[INBUFFERSIZE];
@@ -172,39 +163,34 @@ static char charbufferUSB[INBUFFERSIZE];
 static int charinUSB=0;
 static int charoutUSB=0;
 
-#define ENDSTDIN 0xFF //non char rx value
-
-
 //PIO
 int PIOA=0;
-
 uint8_t PIOAp[]={16,17,18,19,20,21,26,27};
+
 
 //PICO GPIO
 // use regular LED (gpio 25 most likly)
 const uint LEDPIN = PICO_DEFAULT_LED_PIN;
 
 const uint HASSwitchesIO =22;
-//
 int HasSwitches=0;
-//
 
 //ROM Address Switches
-const uint ROMA13 = 10;
-const uint ROMA14 = 11;
-const uint ROMA15 = 12;
+uint ROMA13 = 10;
+uint ROMA14 = 11;
+uint ROMA15 = 12;
+
 
 //serial selection
-const uint SERSEL = 13;
+uint SERSEL = 13;
 
 //buttons
-const uint DUMPBUT =9;
-const uint AUXBUT =8;
-const uint RESETBUT =7;
+uint DUMPBUT =9;
+uint AUXBUT =8;
+uint RESETBUT =7;
 
 //LED
-const uint PCBLED =6;
-
+uint PCBLED =6;
 
 /* use stdio for errors via usb uart */
 
@@ -224,23 +210,6 @@ static unsigned int bankreg[4];
 static uint8_t bankenable;
 
 static uint8_t switchrom = 1;
-//static uint32_t romsize = 65536;
-
-/*
-#define CPUBOARD_Z80		0
-#define CPUBOARD_SC108		1
-#define CPUBOARD_SC114		2
-#define CPUBOARD_Z80SBC64	3
-#define CPUBOARD_EASYZ80	4
-#define CPUBOARD_SC121		5
-#define CPUBOARD_MICRO80	6
-#define CPUBOARD_ZRCC		7
-#define CPUBOARD_TINYZ80	8
-#define CPUBOARD_PDOG128	9
-#define CPUBOARD_PDOG512	10
-
-static uint8_t cpuboard = CPUBOARD_Z80;
-*/
 
 static uint8_t have_ctc;
 static uint8_t have_16x50;
@@ -258,7 +227,7 @@ static uint8_t live_irq;
 
 static Z80Context cpu_z80;
 
-volatile int emulator_done;
+volatile int emulator_done=0;
 
 #define TRACE_MEM	0x000001
 #define TRACE_IO	0x000002
@@ -283,19 +252,32 @@ volatile int emulator_done;
 #define TRACE_FDC	0x100000
 #define TRACE_PS2	0x200000
 #define TRACE_ACIA	0x400000
+#define TRACE_BANK      0x800000 
 
-int trace = 00000;
-//static int trace = 00000;
+int trace = 0;
 
 static void reti_event(void);
 
 static unsigned int nbytes;
 
+//get memspace remaining
+uint32_t getTotalHeap(void) {
+   extern char __StackLimit, __bss_end__;
+   
+   return &__StackLimit  - &__bss_end__;
+}
+
+uint32_t getFreeHeap(void) {
+//needs malloc
+   struct mallinfo m = mallinfo();
+
+   return getTotalHeap() - m.uordblks;
+}
+
+
 static void z80_vardump(void)
 {
 	static uint32_t lastpc = -1;
-//	char buf[256];
-
 	nbytes = 0;
 
 	lastpc = cpu_z80.M1PC;
@@ -325,7 +307,7 @@ static uint8_t mem_read0(uint16_t addr)
               if (trace & TRACE_MEM)  printf( "R%04X[%02X]\n", addr, ram[addr]);
             return ram[addr];
           }
-      }     
+      }
 }
 
 static void mem_write0(uint16_t addr, uint8_t val)
@@ -346,15 +328,12 @@ static void mem_write0(uint16_t addr, uint8_t val)
       }
 }
 
-
-uint8_t do_mem_read(uint16_t addr, int quiet)
-{
+uint8_t do_mem_read(uint16_t addr, int quiet){
       if (watch>0 && addr==watch){        z80_vardump();      }
-	return mem_read0(addr);
+  	  return mem_read0(addr);
 }
 
-uint8_t mem_read(int unused, uint16_t addr)
-{
+uint8_t mem_read(int unused, uint16_t addr){
 	static uint8_t rstate = 0;
 	uint8_t r = do_mem_read(addr, 0);
 
@@ -377,27 +356,23 @@ uint8_t mem_read(int unused, uint16_t addr)
 	return r;
 }
 
-void mem_write(int unused, uint16_t addr, uint8_t val)
-{
+void mem_write(int unused, uint16_t addr, uint8_t val){
 	 mem_write0(addr, val);
 }
 
 
-uint8_t z80dis_byte(uint16_t addr)
-{
+uint8_t z80dis_byte(uint16_t addr){
 	uint8_t r = do_mem_read(addr, 1);
 	printf( "%02X ", r);
 	nbytes++;
 	return r;
 }
 
-uint8_t z80dis_byte_quiet(uint16_t addr)
-{
+uint8_t z80dis_byte_quiet(uint16_t addr){
 	return do_mem_read(addr, 1);
 }
 
-static void z80_trace(unsigned unused)
-{
+static void z80_trace(unsigned unused){
 	static uint32_t lastpc = -1;
 	char buf[256];
 
@@ -423,20 +398,10 @@ static void z80_trace(unsigned unused)
 
 
 
-/*
-int intUSBcharwaiting(){
-// no interrupt or waiting check so use unblocking getchar, adds to buff if available
-    char c = getchar_timeout_us(0);
-    if(c!=ENDSTDIN){;
-        charbufferUSB[charinUSB]=c;
-        charinUSB++;
-        if (charinUSB==INBUFFERSIZE){
-            charinUSB=0;
-        }
-    }
-    return charinUSB!=charoutUSB;
-}
-*/
+
+
+// experimental usb char in circular buffer
+
 int intUSBcharwaiting(){
 // no interrupt or waiting check so use unblocking getchar, adds to buff if avai
     int c = getchar_timeout_us(0);
@@ -450,6 +415,7 @@ int intUSBcharwaiting(){
     }
     return charinUSB!=charoutUSB;
 }
+
 
 
 int testUSBcharwaiting(){
@@ -1055,7 +1021,7 @@ static uint8_t sio2_read(uint16_t addr)
 			}
 		case 3:
 			/* What does the hw report ?? */
-			printf( "INVALID(0xFF)\n");
+//			printf( "INVALID SIO READ (0xFF)\n");
 			return 0xFF;
 		}
 	} else {
@@ -1210,9 +1176,9 @@ struct z80_ctc {
 struct z80_ctc ctc[4];
 uint8_t ctc_irqmask;
 
-/*
-   Emulate pages rom card. 
- */
+
+// Emulate pages rom card. 
+
 static void toggle_rom(void)
 {
 	romdisable=!romdisable;
@@ -1225,6 +1191,7 @@ static void toggle_rom(void)
         }
 
 }
+
 
 static void PIOA_init(void){
 //init gpio ports
@@ -1291,11 +1258,11 @@ static uint8_t io_read_2014(uint16_t addr)
 		return my_ide_read(addr & 7);
 	if (addr >= 0xA0 && addr <= 0xA7 && have_16x50)
 		return uart_read(&uart[0], addr & 7);
-	else if (addr==PIOA) return PIOA_read();	
-	else if (addr==SPO256Port) return SPO256DataReady;
-	else if (addr==SPO256FreqPort) return SPO256FreqPortData; 
-	else if (addr==BeepPort) return BeepDataReady;
-        else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7) return GetNeoData(addr-NeoPixelPort);
+	else if (addr == PIOA) return PIOA_read();	
+	else if (addr == SPO256Port)  return SPO256DataReady;
+	else if (addr == SPO256FreqPort) return SPO256FreqPortData; 
+	else if (addr == BeepPort) return BeepDataReady;
+        else if (addr >= NeoPixelPort && addr <= NeoPixelPort+7) return GetNeoData(addr-NeoPixelPort);
 	if (trace & TRACE_UNK)
 		printf( "Unknown read from port %04X\n", addr);
 	return 0x78;	/* 78 is what my actual board floats at */
@@ -1310,41 +1277,41 @@ static void io_write_2014(uint16_t addr, uint8_t val, uint8_t known)
 		/* Quart */
 		return;
 	}
-	addr &= 0xFF;
-	if ((addr >= 0xA0  && addr <= 0xA7) && acia && acia_narrow == 1)
-		acia_write(acia, addr & 1, val);
-	else if ((addr >= 0x80 && addr <= 0x87) && acia && acia_narrow == 2)
-		acia_write(acia, addr & 1, val);
-	else if ((addr >= 0x80 && addr <= 0xBF) && acia && !acia_narrow)
-		acia_write(acia, addr & 1, val);
-	else if ((addr >= 0x80 && addr <= 0x87) && sio2 )
-		sio2_write(addr & 3, val);
-	else if ((addr >= 0x10 && addr <= 0x17) && ide == 1)
-		my_ide_write(addr & 7, val);
-	else if (addr >= 0xA0 && addr <= 0xA7 && have_16x50)
-		uart_write(&uart[0], addr & 7, val);
-	/* The switchable/pageable ROM is not very well decoded */
-	else if (switchrom && (addr & 0x7F) >= 0x38 && (addr & 0x7F) <= 0x3F)
-		toggle_rom();
-	else if (addr==PIOA)PIOA_write(val);	
-	else if (addr==SPO256Port){SPO256DataOut=val;SPO256DataReady=1;}
-	else if (addr==BeepPort){BeepDataOut=val;BeepDataReady=1;}
+        addr &= 0xFF;
+        if ((addr >= 0xA0  && addr <= 0xA7) && acia && acia_narrow == 1)
+                acia_write(acia, addr & 1, val);
+        else if ((addr >= 0x80 && addr <= 0x87) && acia && acia_narrow == 2)
+                acia_write(acia, addr & 1, val);
+        else if ((addr >= 0x80 && addr <= 0xBF) && acia && !acia_narrow)
+                acia_write(acia, addr & 1, val);
+        else if ((addr >= 0x80 && addr <= 0x87) && sio2 )
+                sio2_write(addr & 3, val);
+        else if ((addr >= 0x10 && addr <= 0x17) && ide == 1)
+                my_ide_write(addr & 7, val);
+        else if (addr >= 0xA0 && addr <= 0xA7 && have_16x50)
+                uart_write(&uart[0], addr & 7, val);
+        /* The switchable/pageable ROM is not very well decoded */
+        else if (switchrom && (addr & 0x7F) >= 0x38 && (addr & 0x7F) <= 0x3F)
+                toggle_rom();
+        else if (addr==PIOA)PIOA_write(val);
+        else if (addr==SPO256Port){SPO256DataOut=val;SPO256DataReady=1;}
+        else if (addr==BeepPort){BeepDataOut=val;BeepDataReady=1;}
         else if (addr==SPO256FreqPort){SPO256FreqPortData=val;}
-	else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7){
-		NeoPortAddr=(addr-NeoPixelPort)&7;
-		NeoPortData=val;
-		NeoPortDataReady=1;
-		}
-	else if (addr == 0xFD) {
-		trace &= 0xFF00;
-		trace |= val;
-		printf( "trace set to %04X\n", trace);
-	} else if (addr == 0xFE) {
-		trace &= 0xFF;
-		trace |= val << 8;
-		printf("trace set to %d\n", trace);
-	} else if (!known && (trace & TRACE_UNK))
-		printf( "Unknown write to port %04X of %02X\n", addr, val);
+        else if (addr>=NeoPixelPort && addr<= NeoPixelPort+7){
+                NeoPortAddr=(addr-NeoPixelPort)&7;
+                NeoPortData=val;
+                NeoPortDataReady=1;
+                }
+        else if (addr == 0xFD) {
+                trace &= 0xFF00;
+                trace |= val;
+                printf( "trace set to %04X\n", trace);
+        } else if (addr == 0xFE) {
+                trace &= 0xFF;
+                trace |= val << 8;
+                printf("trace set to %d\n", trace);
+        } else if (!known && (trace & TRACE_UNK))
+                printf( "Unknown write to port %04X of %02X\n", addr, val);
 }
 
 
@@ -1420,14 +1387,21 @@ void init_pico_uart(void){
 void setup_led(void){
   gpio_init(LEDPIN);
   gpio_set_dir(LEDPIN, GPIO_OUT);
+  //different ???
+  gpio_init(PICO_DEFAULT_LED_PIN);
+  gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+  
 }
 
 
 void flash_led(int t){
   //flash LED
+  //also different
   gpio_put(LEDPIN, 1);
+  gpio_put(PICO_DEFAULT_LED_PIN,1);
   sleep_ms(t);
   gpio_put(LEDPIN, 0);
+  gpio_put(PICO_DEFAULT_LED_PIN,0);
   sleep_ms(t);
 
 }
@@ -1455,7 +1429,7 @@ void WriteRamromToSd(FRESULT fr,char * filename,int writesize,int readfromram){
     FIL fil;
     fr = f_open(&fil, filename, FA_WRITE | FA_OPEN_APPEND);
     if (FR_OK != fr && FR_EXIST != fr){
-        panic("\nf_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
+        panic("\nf_open(%s) error: (%d)\n", filename, fr);
     }else{
       int a;
       char c;
@@ -1473,17 +1447,20 @@ void WriteRamromToSd(FRESULT fr,char * filename,int writesize,int readfromram){
     fr = f_close(&fil);
 }
 
+
+
+
 void ReadSdToRamrom(FRESULT fr,const char * filename,int readsize,int SDoffset,int writetoram ){
-/*    if(writetoram){
-      printf("\n##### Reading %s from SD %04x to RAM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
-    }else{
-      printf("\n##### Reading %s from SD %04x to ROM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
-    }
-*/
+//    if(writetoram){
+//      printf("\n##### Reading %s from SD %04x to RAM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
+//    }else{
+//      printf("\n##### Reading %s from SD %04x to ROM  for %04x bytes #####\n\r",filename,SDoffset,readsize);
+//    }
+
     FIL fil;
     fr = f_open(&fil, filename, FA_READ); //FA_WRITE
     if (FR_OK != fr && FR_EXIST != fr){
-        panic("\nf_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
+        panic("\nf_open(%s) error: (%d)\n", filename, fr);
     }else{
       fr = f_lseek(&fil, SDoffset);
 
@@ -1496,7 +1473,7 @@ void ReadSdToRamrom(FRESULT fr,const char * filename,int readsize,int SDoffset,i
         if(writetoram){
           ram[a]=c;
         }else{
-          rom[a]=c;
+          rom[a]=c; 
         }
       }
 
@@ -1506,6 +1483,7 @@ void ReadSdToRamrom(FRESULT fr,const char * filename,int readsize,int SDoffset,i
 }
 
 
+
 void WriteRamToSD(FRESULT fr,const char * filename,int readsize ){
     char temp[128];
     sprintf(temp,"\n###### Writing %s to SD from RAM  for %04x bytes#####\n\r",filename,readsize);
@@ -1513,14 +1491,15 @@ void WriteRamToSD(FRESULT fr,const char * filename,int readsize ){
     FIL fil;
     fr = f_open(&fil, filename, FA_WRITE | FA_CREATE_ALWAYS); //FA_WRITE
     if (FR_OK != fr && FR_EXIST != fr){
-        panic("\nf_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
+        panic("\nf_open(%s) error: (%d)\n", filename, fr);
     }else{
 
       int a;
       char c;
       UINT bw;
       for(a=0;a<readsize;a++){
-        c=ram[a];
+        //c=ram[a];
+        c= mem_read0(a);
         fr = f_write(&fil, &c, sizeof c, &bw);
         if (bw==0){printf("Write Fail");}
       }
@@ -1549,6 +1528,7 @@ void CopyRamRom2Ram(int FromAddr, int ToAddr, int copysize, int fromram, int tor
       }
     }
 }
+
 
 void DumpRamRom(unsigned int FromAddr, int dumpsize,int dram){
   int rc=0;
@@ -1595,6 +1575,7 @@ void DessembleMemoryUSB(unsigned int FromAddr, int dumpsize){
 
 //dumpmemory to USB for serial dump command
 void DumpMemoryUSB(unsigned int FromAddr, int dumpsize){
+    printf("\nDUMP MEMORY\n");
     int rc=0;
     int a;
     const unsigned char width=16;
@@ -1623,16 +1604,11 @@ void DumpMemoryUSB(unsigned int FromAddr, int dumpsize){
 
 // dump memory image to console and sd if fr is set
 void DumpMemory(unsigned int FromAddr, int dumpsize,FRESULT fr){
+  printf("\nDUMP MEMORY ROM\n");
   int rc=0;
   int a;
   char temp[128];
-  if(romdisable){
-        sprintf(temp,"\n\rROM Disabled\n\r");
-        PrintToSelected(temp,0);
-  }else{
-        sprintf(temp,"\n\rROM Enabled\n\r");
-        PrintToSelected(temp,0);
-  }
+  
   sprintf(temp,"MEM %04X ",FromAddr);
   PrintToSelected(temp,0);
   if (fr!=0) WriteRamToSD(fr,"DUMP.BIN",0x10000 );
@@ -1654,73 +1630,51 @@ void DumpMemory(unsigned int FromAddr, int dumpsize,FRESULT fr){
 
 }
 
-int sdls(const char *dir,const char * search) {
-    int filecnt=0;
-    char cwdbuf[FF_LFN_BUF] = {0};
-    FRESULT fr; /* Return value */
-    char const *p_dir;
-    if (dir[0]) {
-        p_dir = dir;
-    } else {
-        fr = f_getcwd(cwdbuf, sizeof cwdbuf);
-        if (FR_OK != fr) {
-            printf("f_getcwd error: %s (%d)\n", FRESULT_str(fr), fr);
-            return 0;
+
+// dump memory image to console and sd if fr is set
+void DumpFlashRom(unsigned int FromAddr, int dumpsize,FRESULT fr){
+  printf("\nDUMP FLASH (Ah-ar!) ROM\n");
+  int rc=0;
+  int a;
+  char temp[128];
+  
+  sprintf(temp,"MEM %04X ",FromAddr);
+  PrintToSelected(temp,0);
+  if (fr!=0) WriteRamToSD(fr,"DUMP.BIN",0x10000 );
+  for(a=0;a<dumpsize;a++){
+//      sprintf(temp,"%02x ",mem_read0(a+FromAddr));
+      sprintf(temp,"%02x ",rom[a]);
+      PrintToSelected(temp,0);
+      rc++;
+
+      if(rc % 32==0){
+        sprintf(temp,"\r\nMEM %04x ",rc+FromAddr);
+        PrintToSelected(temp,0);
+      }else{
+        if (rc % 8==0){
+          sprintf(temp," ");
+          PrintToSelected(temp,0);
         }
-        p_dir = cwdbuf;
-    }
-    printf("%s files %s\n",search, p_dir);
-    DIR dj;      /* Directory object */
-    FILINFO fno; /* File information */
-    memset(&dj, 0, sizeof dj);
-    memset(&fno, 0, sizeof fno);
-    fr = f_findfirst(&dj, &fno, p_dir, search);
-    if (FR_OK != fr) {
-        printf("f_findfirst error: %s (%d)\n", FRESULT_str(fr), fr);
-        return 0;
-    }
-    while (fr == FR_OK && fno.fname[0]) { /* Repeat while an item is found */
-        /* Create a string that includes the file name, the file size and the
-         attributes string. */
-        const char *pcWritableFile = "writable file",
-                   *pcReadOnlyFile = "read only file",
-                   *pcDirectory = "directory";
-        const char *pcAttrib;
-        /* Point pcAttrib to a string that describes the file. */
-        if (fno.fattrib & AM_DIR) {
-            pcAttrib = pcDirectory;
-        } else if (fno.fattrib & AM_RDO) {
-            pcAttrib = pcReadOnlyFile;
-        } else {
-            pcAttrib = pcWritableFile;
-        }
-        /* Create a string that includes the file name, the file size and the
-         attributes string. */
-        printf("%i) %s [%s] [size=%llu]\n", filecnt+1, fno.fname, pcAttrib, fno.fsize);
-        if (filecnt<MaxBinFiles){
-          sprintf(&BinFiles[filecnt],"%s",fno.fname);
-          filecnt++;
-        }
-        fr = f_findnext(&dj, &fno); /* Search for next item */
-    }
-    f_closedir(&dj);
-    return filecnt++;
+      }
+  }
+
 }
 
 
+
 int GetRomSwitches(){
-  gpio_init(HASSwitchesIO); 
+  gpio_init(HASSwitchesIO);
   gpio_set_dir(HASSwitchesIO,GPIO_IN);
   gpio_pull_up(HASSwitchesIO);
 
   gpio_init(ROMA13);
   gpio_set_dir(ROMA13,GPIO_IN);
   gpio_pull_up(ROMA13);
-  
+
   gpio_init(ROMA14);
   gpio_set_dir(ROMA14,GPIO_IN);
   gpio_pull_up(ROMA14);
-  
+
   gpio_init(ROMA15);
   gpio_set_dir(ROMA15,GPIO_IN);
   gpio_pull_up(ROMA15);
@@ -1775,15 +1729,10 @@ int GetRomSwitches(){
     gpio_init(PCBLED);
     gpio_set_dir(PCBLED,GPIO_OUT);
 
-
-
-
-
   }
   return rombank;
 
 }
-
 
 int SDFileExists(char * filename){
     FRESULT fr;
@@ -1792,6 +1741,7 @@ int SDFileExists(char * filename){
     fr = f_stat(filename, &fno);
     return fr==FR_OK;
 }
+
 
 
 //############################################################################################################
@@ -1827,6 +1777,7 @@ void PlayAllophones(uint8_t *alist,int listlength){
      PlayAllophone(alist[a]);
    }
 }
+
 
 void SetPWM(void){
     gpio_init(soundIO1);
@@ -1866,8 +1817,6 @@ void Beep(uint8_t note){
 //############################################################################################################
 //######################## NEO PIXEL DRIVER ######################################
 //############################################################################################################
-
-
 
 //neo vars
 
@@ -2059,9 +2008,6 @@ void DoNeo(uint8_t addr,uint8_t data){
 }
 
 
-
-
-
 //############################################################################################################
 //################################################# Core 1 ####################################################
 //############################################################################################################
@@ -2072,23 +2018,23 @@ void Core1Main(void){
 
 // init sound
     SetPWM();
-  
+
 //init neopixels
     init_neo();
 
 //SAY RC2040
     uint8_t alist[] ={AR1,PA3,SS1,SS1,IY1,PA3,TT2,WH1,EH1,EH1,NN1,PA2,PA3,TT2,IY1,PA5,FF1,OR1,PA3,TT2,IY1,PA5};
     PlayAllophones(alist,sizeof(alist));
-  
+
     while(1){
       if(SPO256DataReady>0){
           PlayAllophone(SPO256DataOut);
           SPO256DataReady=0;
-      }  
+      }
       if(BeepDataReady>0){
           Beep(BeepDataOut);
           BeepDataReady=0;
-      }    
+      }
       if(NeoPortDataReady>0){
           DoNeo(NeoPortAddr,NeoPortData);
           NeoPortDataReady=0;
@@ -2100,29 +2046,13 @@ void Core1Main(void){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //#######################################################################################################
 //#                                      MAIN                                                           #
 //#######################################################################################################
 
 
 
-int main(int argc, char *argv[])
+void main(void)
 {
 	static struct timespec tc;
 		
@@ -2131,14 +2061,13 @@ int main(int argc, char *argv[])
 	int romen = 1;
 	int ramonly=0; //disble rom copy 64K romfile directly to ram
 	
-	//char *idepath = NULL; 
 	const char * idepathi ="";
 	const char * idepath ="";
 	
 	int indev;
 	char *patha = NULL, *pathb = NULL;
-	const char * romfile ="R0001009.BIN"; //default ROM image
-        uint16_t romsize =0x2000;
+	const char * romfile ="XXXXXXXXXX.BIN"; //default ROM image
+        uint32_t romsize = 0x2000; //512 K
         char temp[250];
 	
 	int SerialType =0; //ACIA=0 SIO=1
@@ -2149,8 +2078,6 @@ int main(int argc, char *argv[])
 //over clock done in ini parcer now
         set_sys_clock_khz(250000, true);
 
-
-	
 #define INDEV_ACIA	1
 #define INDEV_SIO	2
 #define INDEV_CPLD	3
@@ -2171,18 +2098,21 @@ int main(int argc, char *argv[])
 
 
 // mount SD Card
-        sd_card_t *pSD = sd_get_by_num(0);
-        FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+        
+        FATFS fs;
+        FRESULT fr = f_mount(&fs, "", 1);
+        
         if (FR_OK != fr){
             // panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-            PrintToSelected("SD INIT FAIL  \n\r",1);
+            sleep_ms(3000); // wait for USB
+            gpio_put(LEDPIN, 1); // SET LED PIN ON as a subtle hint.
+            printf("SD INIT FAIL  \n\r");
+            uart_puts(UART_ID, "SD INIT FAIL\n\r");
+            sleep_ms(1000);
             while(1); //halt
         }
-
-        PrintToSelected("SD INIT OK \n\r",1);
-
-
-
+	printf("SD INIT OK  \n\r");
+        uart_puts(UART_ID, "SD INIT OK \n\r");
 
 // inifile parse
 	dictionary * ini ;
@@ -2195,89 +2125,91 @@ int main(int argc, char *argv[])
         int iscf=0;
 
        	ini_name = "rc2040.ini";
-
 	
 	if (SDFileExists(ini_name)){
 	  sprintf(temp,"Ini file %s Exists Loading ... \n\r",ini_name);
 	  PrintToSelected(temp,1);
 
 //########################################### INI Parser ######################################		
-	  ini = iniparser_load(fr, ini_name);
-	  //iniparser_dump(ini, stdout);
+          ini = iniparser_load(fr, ini_name);
+          //iniparser_dump(ini, stdout);
 
-	  //override Jumpers
-	  overridejumpers=iniparser_getint(ini, "ROM:ovjump", 0);
-	  
-	  // ROM select from ini
-	  rombank=0;
-	  if (iniparser_getint(ini, "ROM:a13", 0)) rombank+=1;
-	  if (iniparser_getint(ini, "ROM:a14", 0)) rombank+=2;
-	  if (iniparser_getint(ini, "ROM:a15", 0)) rombank+=4;
+          printf("Out of IniParse\n");
 
-	  // ROMfile from ini
-	  romfile = iniparser_getstring(ini, "ROM:romfile", romfile);
-	  romsize = iniparser_getint(ini, "ROM:romsize", 0x2000);
+          //override Jumpers
+          overridejumpers=iniparser_getint(ini, "ROM:ovjump", 0);
 
-	  // RAMonly load
-	  ramonly =iniparser_getint(ini, "ROM:ramonly", 0);
+          // ROM select from ini
+          rombank=0;
+          if (iniparser_getint(ini, "ROM:a13", 0)) rombank+=1;
+          if (iniparser_getint(ini, "ROM:a14", 0)) rombank+=2;
+          if (iniparser_getint(ini, "ROM:a15", 0)) rombank+=4;
 
-	  // start at
-	  jpc = iniparser_getint(ini, "ROM:jumpto", 0);
+          // ROMfile from ini
+          romfile = iniparser_getstring(ini, "ROM:romfile", romfile);
+          romsize = iniparser_getint(ini, "ROM:romsize", 0x2000);
+
+          // RAMonly load
+          ramonly =iniparser_getint(ini, "ROM:ramonly", 0);
+
+          // start at
+          jpc = iniparser_getint(ini, "ROM:jumpto", 0);
 
           // Use Ide
-	  ide = iniparser_getint(ini, "IDE:ide",1);
-	  
-	  // IDE cf file
-	  iscf = iniparser_getint(ini, "IDE:iscf", iscf);
-	  
-	  idepathi = iniparser_getstring(ini, "IDE:idefilei", "");
-	  idepath = iniparser_getstring(ini, "IDE:idefile", idepath);
-	  
-	  // USB or UART
-	  UseUsb = iniparser_getint(ini, "CONSOLE:port", 1);
+          ide = iniparser_getint(ini, "IDE:ide",1);
 
-	  // ACIA /SERIAL
+          // IDE cf file
+          iscf = iniparser_getint(ini, "IDE:iscf", iscf);
+
+          idepathi = iniparser_getstring(ini, "IDE:idefilei", "");
+          idepath = iniparser_getstring(ini, "IDE:idefile", idepath);
+
+          // USB or UART
+          UseUsb = iniparser_getint(ini, "CONSOLE:port", 1);
+
+          // ACIA /SERIAL
           SerialType = iniparser_getint(ini, "EMULATION:serialtype",0 );
-          
+
           // ININAME
           inidesc = iniparser_getstring(ini, "EMULATION:inidesc","Default ini" );
           sprintf(temp,"INI Description: %s \n\r",inidesc,1);
           PrintToSelected(temp,1);
 
           // Trace enable from inifile
-	  trace = iniparser_getint(ini, "DEBUG:trace",0 );
-	  watch = iniparser_getint(ini, "DEBUG:watch",0 );
+          trace = iniparser_getint(ini, "DEBUG:trace",0 );
+          watch = iniparser_getint(ini, "DEBUG:watch",0 );
 
-	  // PORT
-	  PIOA = iniparser_getint(ini, "[PORT]:pioa",0 );
+          // PORT
+          PIOA = iniparser_getint(ini, "[PORT]:pioa",0 );
 
-	  SPO256Port = iniparser_getint(ini, "[PORT]:spo256",SPO256Port );
-	  SPO256FreqPort = iniparser_getint(ini, "[PORT]:spo256freq",SPO256FreqPort );
-	  BeepPort = iniparser_getint(ini, "[PORT]:beep",BeepPort );
-	  NeoPixelPort = iniparser_getint(ini,"[PORT]:Neo", NeoPixelPort);
+          SPO256Port = iniparser_getint(ini, "[PORT]:spo256",SPO256Port );
+          SPO256FreqPort = iniparser_getint(ini, "[PORT]:spo256freq",SPO256FreqPort );
+          BeepPort = iniparser_getint(ini, "[PORT]:beep",BeepPort );
+          NeoPixelPort = iniparser_getint(ini,"[PORT]:Neo", NeoPixelPort);
 
           // Overclock
-	  overclock = iniparser_getint(ini, "SPEED:overclock",0 );
-	  if (overclock>0){
-	        sprintf(temp,"Overclock to %i000\n\r",overclock,1);
-	        PrintToSelected(temp,1);
-	  	set_sys_clock_khz(overclock*1000, true);
+          overclock = iniparser_getint(ini, "SPEED:overclock",0 );
+          if (overclock>0){
+                printf("Overclock to %i000\n\r",overclock,1);
+                PrintToSelected(temp,1);
+                set_sys_clock_khz(overclock*1000, true);
           }
 
-	  //iniparser_freedict(ini); // cant free, settings are pointed to dictionary.
+          //iniparser_freedict(ini); // cant free, settings are pointed to dictionary.
 
-	  PrintToSelected("Loaded INI\n\r",1);	
+          PrintToSelected("Loaded INI\n\r",1);
+          //printf("Loaded INI\n\r");
 
 //########################################### End of INI Parser ###########################
 
 
-//IF switches link present, get switches and select rom bank and UART from switches
-          if (overridejumpers==0){
-            rombank=GetRomSwitches();
-          }else{
-            printf("Override jumpers set in INI \n\r");
-          }  
-                 
+//IF switches link present, get switches and select UART from switches
+	  if (overridejumpers==0){
+	     rombank=GetRomSwitches();
+	  }else{
+	     printf("Override jumpers set in INI \n\r");
+	  }
+	
         }else{
             uart_puts(UART_ID,"No  \n\r");
             printf("SD INIT OK \n\r",1);
@@ -2294,26 +2226,38 @@ int main(int argc, char *argv[])
 	printf("\n\rCompiled %s %s\n",__DATE__,__TIME__);
 
 
-        
-
 // Decided on serial port so from here on Print only to that post
 
 //init PIO
         if(PIOA<256) PIOA_init();
 
 
+//chip detect
+     char chip[8]="??????";
+#ifdef PICO_RP2350
+     sprintf(chip,"RP2350");
+#endif
+#ifdef PICO_RP2040
+     sprintf(chip,"RP2040");
+#endif
+
+
 //banner
-	sprintf(RomTitle, "\n\n\n");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\n\n");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r     ________________________________");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r    /                                |");PrintToSelected(RomTitle,0);
-        sprintf(RomTitle, "\n\r   /          PICO RC2040            |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r   /       PICO RC2040 on %s     |",chip);PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r  /         Derek Woodroffe          |");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r |  O        Extreme Kits            |");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r |     Kits at extkits.uk/RC2040     |");PrintToSelected(RomTitle,0);
-        sprintf(RomTitle, "\n\r |               2023                |");PrintToSelected(RomTitle,0);
+        sprintf(RomTitle, "\n\r |               2025                |");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r |___________________________________|");PrintToSelected(RomTitle,0);
         sprintf(RomTitle, "\n\r   | | | | | | | | | | | | | | | | |  \n\n\r");PrintToSelected(RomTitle,0);
 
+
+// memory free
+	printf("Total Heap %i\n",getTotalHeap());
+	printf("Free Heap %i\n",getFreeHeap());
 
 
 //init Emulation
@@ -2343,7 +2287,7 @@ int main(int argc, char *argv[])
             PrintToSelected("\rSIO selected\n\r",1);
         }
         
-        //ram only system, hey we are emulating this, we can do ANYTHING!! 
+        //ram only system, hey we are emulating this, we can do ANYTHING!!
         if (ramonly==1){
            // Read RAM from SD
            ReadSdToRamrom(fr,romfile,0x10000,0x0000,USERAM);   //load 64K image to ram
@@ -2358,6 +2302,7 @@ int main(int argc, char *argv[])
         }
         PrintToSelected(RomTitle,1);
 
+	
         have_ctc = 0;
         have_16x50 = 0;
 //	tstate_steps = 500;
@@ -2384,9 +2329,12 @@ int main(int argc, char *argv[])
 				ide_reset_begin(ide0);
 				if (trace & TRACE_IDE) printf( "IDE0 Open OK");
 			}
-		} else
-			ide = 0;
+					
+                 }else{
+                 	ide=0;
+                 }	
 	}
+
 
 	if (have_acia) {
 		acia = acia_create();
@@ -2410,12 +2358,13 @@ int main(int argc, char *argv[])
 		break;
 	default:
 		printf( "Invalid input device %d.\n", indev);
-	}
 
+	}
 
 //Start Core1
         multicore_launch_core1(Core1Main);
         printf("\n#Core 1 Started#\n\n");
+
         
 //Init Z80
 	tc.tv_sec = 0;
@@ -2436,10 +2385,11 @@ int main(int argc, char *argv[])
 	cpu_z80.memWrite = mem_write;
 	cpu_z80.trace = z80_trace;
 
+        PrintToSelected("\r\n #####################################",0);
+	PrintToSelected("\r\n #######  Pico RC2040 STARTING  ######",0);
+        PrintToSelected("\r\n #####################################\n\r",0);
+        
 
-	PrintToSelected("\r\n #####################################\n\r",0);
-	PrintToSelected(" ########## RC2040 STARTING ##########\n\r",0);
-	PrintToSelected(" #####################################\n\n\r",0);
 
 	/* This is the wrong way to do it but it's easier for the moment. We
 	   should track how much real time has occurred and try to keep cycle
@@ -2466,7 +2416,7 @@ int main(int argc, char *argv[])
                         Z80RESET(&cpu_z80);
                         while(gpio_get(RESETBUT)==0);
                     }
-                    
+#ifdef FFS                    
                     if(gpio_get(AUXBUT)==0){
                        
                        while(gpio_get(AUXBUT)==0);
@@ -2476,7 +2426,7 @@ int main(int argc, char *argv[])
                        gpio_put(PCBLED,0);
                     
                     }
-                    
+#endif                    
                 }
 
 		for (i = 0; i < 40; i++) {  //origional
@@ -2500,7 +2450,7 @@ int main(int argc, char *argv[])
 			   flags to indicate there is more happening. We will
 			   pick up the next state changes on the reti if so */
 			if (!(cpu_z80.IFF1|cpu_z80.IFF2))
-				int_recalc = 0;
+   			   int_recalc = 0;
 		}
 	}
 }

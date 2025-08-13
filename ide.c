@@ -128,6 +128,14 @@ static uint16_t le16(uint16_t v)
   return p[0] | (p[1] << 8);
 }
 
+
+static uint32_t le32(uint32_t v)
+{
+  uint8_t *p = (uint8_t *)&v;
+  return p[0] | (p[1] << 8) |(p[2] << 16)   | (p[3] << 24);
+}
+
+
 static void ide_xlate_errno(struct ide_taskfile *t, int len)
 {
   t->status |= ST_ERR;
@@ -800,6 +808,20 @@ int ide_attach(struct ide_controller *c, int drive, FIL fi,FIL fd,int iscf )
     d->lba = 1;
   else
     d->lba = 0;
+    
+    
+//overwite the ident file to give correct sizes for disk image files.  
+  uint32_t imgsize=f_size(&d->fd);    
+//  printf("Attach %i size 0x%8X %i bytes \n",drive,imgsize,imgsize);
+  imgsize=imgsize/512;
+  d->identify[58]=le16(imgsize >> 16);
+  d->identify[57]=le16(imgsize & 0xffff);
+  
+  d->identify[61]=le16(imgsize >> 16);
+  d->identify[60]=le16(imgsize & 0xffff);
+
+//  printf(" %4x %4x\n",d->identify[57],d->identify[58]);
+    
   return 0;
 }
 
