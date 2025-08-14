@@ -124,6 +124,10 @@ This allows direct manipulation of the CPM system on the SD card without stoppin
 
 *mZ/s milli Zorks/second = time to transfer 1/1000th of Zork1 (96K) in one second.
 
+#### Note ####
+FFS is only available on Realease 1 (pi pico) 
+This is due to compatibility problems with SDK2 and CPM tools. 
+
 ## Progress
 
 Now looking at documenting it and adding "useful" stuff to the build
