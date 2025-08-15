@@ -1,10 +1,12 @@
 #include <string.h>
 #include <ctype.h>
-#include "base64endecode.c"
+#include "base64endecode.h"
 #include <stdint.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#define DEBUG 0
+//#define DEBUG 0
 //include from RC2040
 #include "RC2040.h"
 
@@ -48,8 +50,9 @@
 #define NOT_FOUND -1
 
 //cpmtools
-#include "cpmcp.c"
-#include "cpmls.c"
+//#include "cpmcp.c"
+//#include "cpmls.c"
+#include "cpmfs.h"
 
 extern uint16_t watch;
 extern  int trace;
@@ -67,7 +70,8 @@ struct cpmSuperBlock drive;
 char format[40];
 char *devopts=NULL;
 
-struct cpmInode root;
+struct cpmInode root
+;
 char **gargv;
 int gargc;
 static char starlit[2]="*";
@@ -398,7 +402,9 @@ void DoData(void){
         sprintf(file,"%s",cfilename);
  
         sprintf(filearg,"%s",cfilename);
-        cpmglob(0,1,fargc-1,&root,&gargc,&gargv);
+        
+//        cpmglob(0,1,fargc-1,&root,&gargc,&gargv);
+        cpmglob(0,1,fargc,&root,&gargc,&gargv);
       
         if (DEBUG) printf("CPM GLOB\n");
 

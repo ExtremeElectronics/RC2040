@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <utime.h>
 
+#define DEBUG 0
+
 #ifdef _WIN32
     #include <windows.h>
     #include <winioctl.h>
@@ -203,6 +205,9 @@ void cpmUtime(struct cpmInode *ino, struct utimbuf *times);
 int cpmSync(struct cpmSuperBlock *sb);
 void cpmUmount(struct cpmSuperBlock *sb);
 int cpmCheckDs(struct cpmSuperBlock *sb);
+char * UUoldddir(char **dirent, int entries, struct cpmInode *ino);
+void Base64ToCPM( struct cpmInode *root,  const char *filename);
+int cpmToBase64(const struct cpmInode *root, const char *src);
 
 #ifdef __cplusplus
 	}

@@ -19,6 +19,9 @@
 #include "hardware/irq.h"
 #include "pico/multicore.h"
 
+//me
+#include "RC2040.h"
+
 //iniparcer
 #include "dictionary.h"
 #include "iniparser.h"
@@ -51,7 +54,9 @@ FIL fili;
 FIL fild;
 
 //serial file transfer
-#include "serialfile.c"
+#include "serialfile.h"
+
+#define ENABLEFFS 1 //enable FFS
 
 //2 pages of RAM/ROM for PICO
 #define USERAM 1
@@ -294,7 +299,7 @@ static void z80_vardump(void)
 }
 
 
-static uint8_t mem_read0(uint16_t addr)
+uint8_t mem_read0(uint16_t addr)
 {
       if(romdisable){
           if (trace & TRACE_MEM) printf( "R%04X[%02X]\n", addr, ram[addr]);
@@ -310,7 +315,7 @@ static uint8_t mem_read0(uint16_t addr)
       }
 }
 
-static void mem_write0(uint16_t addr, uint8_t val)
+void mem_write0(uint16_t addr, uint8_t val)
 {
 
       if(romdisable){
@@ -2416,12 +2421,11 @@ void main(void)
                         Z80RESET(&cpu_z80);
                         while(gpio_get(RESETBUT)==0);
                     }
-#ifdef FFS                    
+#ifdef ENABLEFFS                    
                     if(gpio_get(AUXBUT)==0){
-                       
+                       gpio_put(PCBLED,1);                       
                        while(gpio_get(AUXBUT)==0);
                        sleep_ms(100);
-                       gpio_put(PCBLED,1);
                        serialfile();
                        gpio_put(PCBLED,0);
                     

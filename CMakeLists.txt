@@ -32,11 +32,17 @@ string(APPEND CMAKE_EXE_LINKER_FLAGS "-Wl,--print-memory-usage")
         acia.c
         dictionary.c
 	iniparser.c
-
+	
    #cpm tools
         cpmfs.c
         device_sdfs.c
+	cpmcp.c
+	cpmls.c
+   #encoding	
+	base64endecode.c	
 
+   #FFS
+	serialfile.c
   )
 
   # neopixel

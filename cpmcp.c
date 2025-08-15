@@ -13,6 +13,7 @@
 
 //#include "getopt_.h"
 #include "cpmfs.h"
+#include "base64endecode.h"
 
 #ifdef USE_DMALLOC
 #include <dmalloc.h>

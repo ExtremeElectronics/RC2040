@@ -15,15 +15,16 @@
 #endif
 
 /* variables */ /*{{{*/
-char cbuf[8048];
+//char cbuf[22400];
+char cbuf[11200];
 
 static const char * const month[12]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
 
 /* namecmp -- compare two entries */ /*{{{*/
 static int namecmp(const void *a, const void *b)
 {
-  if (**((const char * const *)a)=='[') return -1;
-  return strcmp(*((const char * const *)a),*((const char * const *)b));
+    if (**((const char * const *)a)=='[') return -1;
+    return strcmp(*((const char * const *)a),*((const char * const *)b));
 }
 /*}}}*/
 /* olddir  -- old style output */ /*{{{*/
@@ -64,8 +65,6 @@ static void olddir(char **dirent, int entries)
   }
   if (entries==0) printf("No files\n");
 }
-
-
 
 /* oldddir -- old style long output 
 *  to Base64 encoding
