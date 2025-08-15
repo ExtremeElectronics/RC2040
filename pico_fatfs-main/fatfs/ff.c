@@ -25,7 +25,8 @@
 
 //#include "../../../RC2040P2.h" /* include for disk led and sounds*/
 
-extern int playing_disk;
+//#include "../../RC2040.h"
+extern volatile uint8_t playing_disk;
 
 /*--------------------------------------------------------------------------
 
